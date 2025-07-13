@@ -1,0 +1,336 @@
+---
+title: "MATH5845 --- Time Series Analysis: Week 3 (T2- 2025)"
+author:
+- Atefeh Zamani
+- Deparment of Statistics
+- University of New South Wales
+outpute:
+  pdf_document: default
+  html_notebook: default
+output:
+  html_document:
+    df_print: paged
+  pdf_document: default
+---
+
+
+### Packages
+
+```{r, include=FALSE}
+options(tinytex.verbose = TRUE)
+```
+
+
+```{r, message=FALSE}
+library(astsa)
+data(package="astsa")
+library(itsmr)
+library("dygraphs")
+```
+
+```{r, include=FALSE}
+options(tinytex.verbose = TRUE)
+```
+
+### Application
+```{r}
+library(itsmr)
+DJUtilIndex = ts(dowj)
+DJUtilIndex.D1<-diff(DJUtilIndex)
+acf2(DJUtilIndex.D1)
+
+
+DJUtilIndex.AR2_CSS<-arima(DJUtilIndex.D1,order=c(2,0,0), include.mean=FALSE, method = "CSS")
+DJUtilIndex.AR2_ML<-arima(DJUtilIndex.D1,order=c(2,0,0), include.mean=FALSE, method = "ML")
+DJUtilIndex.AR2_ML
+
+DJUtilIndex.AR1_CSS<-arima(DJUtilIndex.D1,order=c(1,0,0), include.mean=FALSE, method = "CSS")
+DJUtilIndex.AR1_ML<-arima(DJUtilIndex.D1,order=c(1,0,0), include.mean=FALSE, method = "ML")
+DJUtilIndex.AR1_ML
+
+DJUtilIndex.AR1_ML$residuals
+par(mfrow=c(2,2))
+plot(DJUtilIndex.AR1_ML$residuals)
+abline(h=0)
+acf(DJUtilIndex.AR1_ML$residuals)
+pacf(DJUtilIndex.AR1_ML$residuals)
+qqnorm(DJUtilIndex.AR1_ML$residuals)
+```
+
+Besides, we can find the estimation of $\phi_1$ and $\phi_2$ using the Yule-Walker equations as followings:
+```{r}
+DJacf = acf(DJUtilIndex.D1, plot=FALSE)
+DJacvf =  acf(DJUtilIndex.D1, plot=FALSE, type="covariance")
+attributes(DJacf) #start in lag 0
+attributes(DJacvf)
+acf_matrix=matrix(data=c(1,DJacf$acf[2],DJacf$acf[2],1),nrow=2, byrow=FALSE)
+rho_hat=matrix(c(DJacf$acf[2],DJacf$acf[3]))
+phi_hat=solve(acf_matrix)%*%rho_hat
+phi_hat
+
+#sigma_hat2=DJacvf$acf[1]*(1-t(phi_hat)%*%rho_hat)
+#sigma_hat2
+
+#sigma_hat2=DJacvf$acf[1]*(1-t(rho_hat)%*%solve(acf_matrix)%*%rho_hat)
+#cov_matrix_phi_hat =as.vector(1-t(rho_hat)%*%solve(acf_matrix)%*%rho_hat)*
+# solve(acf_matrix)
+
+yw(DJUtilIndex.D1,p=2) #yw is a function in itsmr package to estimate AR 
+# coefficients using the Yule-Walker method 
+
+ar.yw(DJUtilIndex.D1,aic=FALSE,order.max=2) # refer to the function ar in stats 
+# package for more information
+
+```
+
+#### ACF and PACF of {\tt DJUtilIndex.D1}
+```{r}
+acf2(DJUtilIndex.D1)
+#pacf(DJUtilIndex.D1)
+
+```
+
+### Theoretical ACF and PACF for some MA(1) models (n=100)
+```{r}
+par(mfrow=c(2,2))
+plot(ARMAacf(ar=0,ma=0.8, pacf = FALSE, lag.max = 15), type="h",xlab="lag", 
+     ylab="ACF", ylim=c(-1,1))
+abline(h=0)
+abline(h=c(-0.196, 0.196), col="blue", lty=2)
+title(expression(X[t] == epsilon[t] + 0.8 * epsilon[t-1]))
+
+plot(ARMAacf(ar=0,ma=0.8, pacf = TRUE, lag.max = 15), type="h",xlab="lag", 
+     ylab="PACF", ylim=c(-1,1))
+abline(h=0)
+abline(h=c(-0.196, 0.196), col="blue", lty=2)
+title(expression(X[t] == epsilon[t] + 0.8 * epsilon[t-1]))
+
+
+plot(ARMAacf(ar=0,ma=-0.8, pacf = FALSE, lag.max = 15), type="h",xlab="lag", 
+     ylab="ACF", ylim=c(-1,1))
+abline(h=0)
+abline(h=c(-0.196, 0.196), col="blue", lty=2)
+title(expression(X[t] == epsilon[t] - 0.8 * epsilon[t-1]))
+
+plot(ARMAacf(ar=0,ma=-0.8, pacf = TRUE, lag.max = 15), type="h",xlab="lag", 
+     ylab="PACF", ylim=c(-1,1))
+abline(h=0)
+abline(h=c(-0.196, 0.196), col="blue", lty=2)
+title(expression(X[t] == epsilon[t] - 0.8 * epsilon[t-1]))
+```
+
+
+### Theoretical ACF and PACF for some MA(2) models (n=100)
+```{r}
+par(mfrow=c(2,2))
+
+plot(ARMAacf(ar=0,ma=c(0.7,-0.28), pacf = FALSE, lag.max = 15), type="h",
+     xlab="lag", ylab="ACF", ylim=c(-1,1))
+abline(h=0)
+abline(h=c(-0.196, 0.196), col="blue", lty=2)
+title(expression(X[t] == epsilon[t] + 0.7 * epsilon[t-1]- 0.28 * epsilon[t-2]))
+
+plot(ARMAacf(ar=0,ma=c(0.7,-0.28), pacf = TRUE, lag.max = 15), type="h",
+     xlab="lag", ylab="PACF", ylim=c(-1,1))
+abline(h=0)
+abline(h=c(-0.196, 0.196), col="blue", lty=2)
+title(expression(X[t] == epsilon[t] + 0.7 * epsilon[t-1]- 0.28 * epsilon[t-2]))
+
+
+plot(ARMAacf(ar=0,ma=c(-1.1,0.8), pacf = FALSE, lag.max = 15), type="h",
+     xlab="lag", ylab="ACF", ylim=c(-1,1))
+abline(h=0)
+abline(h=c(-0.196, 0.196), col="blue", lty=2)
+title(expression(X[t] == epsilon[t] - 1.1 * epsilon[t-1]+ 0.8 * epsilon[t-2]))
+
+plot(ARMAacf(ar=0,ma=c(-1.1,0.8), pacf = TRUE, lag.max = 15), type="h",
+     xlab="lag", ylab="PACF", ylim=c(-1,1))
+abline(h=0)
+abline(h=c(-0.196, 0.196), col="blue", lty=2)
+title(expression(X[t] == epsilon[t] - 1.1 * epsilon[t-1]+ 0.8 * epsilon[t-2]))
+```
+
+
+### Theoretical ACF and PACF for some AR(1) models (n=100)
+```{r}
+par(mfrow=c(2,2))
+plot(ARMAacf(ar=0.8,ma=0, pacf = FALSE, lag.max = 15), type="h",xlab="lag", 
+     ylab="ACF", ylim=c(-1,1))
+abline(h=0)
+abline(h=c(-0.196, 0.196), col="blue", lty=2)
+title(expression(X[t] ==  0.8 * X[t-1]+epsilon[t]))
+
+plot(ARMAacf(ar=0.8,ma=0, pacf = TRUE, lag.max = 15), type="h",xlab="lag", 
+     ylab="PACF", ylim=c(-1,1))
+abline(h=0)
+abline(h=c(-0.196, 0.196), col="blue", lty=2)
+title(expression(X[t] == 0.8 * X[t-1]+epsilon[t]))
+
+
+plot(ARMAacf(ar=-0.8,ma=0, pacf = FALSE, lag.max = 15), type="h",xlab="lag", 
+     ylab="ACF", ylim=c(-1,1))
+abline(h=0)
+abline(h=c(-0.196, 0.196), col="blue", lty=2)
+title(expression(X[t] == -0.8 * X[t-1]+epsilon[t]))
+
+plot(ARMAacf(ar=-0.8,ma=0, pacf = TRUE, lag.max = 15), type="h",xlab="lag", 
+     ylab="PACF", ylim=c(-1,1))
+abline(h=0)
+abline(h=c(-0.196, 0.196), col="blue", lty=2)
+title(expression(X[t] == -0.8 * X[t-1]+epsilon[t]))
+```
+
+
+### Theoretical ACF and PACF for some AR(2) models (n=100)
+```{r}
+par(mfrow=c(2,2))
+plot(ARMAacf(ar=c(0.4,0.5),ma=0, pacf = FALSE, lag.max = 15), type="h",
+     xlab="lag", ylab="ACF", ylim=c(-1,1))
+abline(h=0)
+abline(h=c(-0.196, 0.196), col="blue", lty=2)
+title(expression(X[t] == 0.4*X[t-1] + 0.5 * X[t-2]+ epsilon[t]))
+
+plot(ARMAacf(ar=c(0.4,0.5),ma=0, pacf = TRUE, lag.max = 15), type="h",
+     xlab="lag", ylab="PACF", ylim=c(-1,1))
+abline(h=0)
+abline(h=c(-0.196, 0.196), col="blue", lty=2)
+title(expression(X[t] == 0.4*X[t-1] + 0.5 * X[t-2]+ epsilon[t]))
+
+
+plot(ARMAacf(ar=c(0.8,-0.5),ma=0, pacf = FALSE, lag.max = 15), type="h",
+     xlab="lag", ylab="ACF", ylim=c(-1,1))
+abline(h=0)
+abline(h=c(-0.196, 0.196), col="blue", lty=2)
+title(expression(X[t] == 0.8*X[t-1] - 0.5 * X[t-2]+ epsilon[t]))
+
+plot(ARMAacf(ar=c(0.8,-0.5),ma=0, pacf = TRUE, lag.max = 15), type="h",
+     xlab="lag", ylab="PACF", ylim=c(-1,1))
+abline(h=0)
+abline(h=c(-0.196, 0.196), col="blue", lty=2)
+title(expression(X[t] == 0.8*X[t-1] - 0.5 * X[t-2]+ epsilon[t]))
+```
+
+### Theoretical ACF and PACF for some ARMA(1,1) models (n=100)
+```{r}
+par(mfrow=c(2,2))
+plot(ARMAacf(ar=0.6,ma=0.8, pacf = FALSE, lag.max = 15), type="h",xlab="lag", 
+     ylab="ACF", ylim=c(-1,1))
+abline(h=0)
+abline(h=c(-0.196, 0.196), col="blue", lty=2)
+title(expression(X[t] == 0.6*X[t-1] + epsilon[t]+ 0.8 * epsilon[t-1]))
+
+plot(ARMAacf(ar=0.6,ma=0.8, pacf = TRUE, lag.max = 15), type="h",xlab="lag", 
+     ylab="PACF", ylim=c(-1,1))
+abline(h=0)
+abline(h=c(-0.196, 0.196), col="blue", lty=2)
+title(expression(X[t] == 0.6*X[t-1] + epsilon[t]+ 0.8 * epsilon[t-1]))
+
+
+plot(ARMAacf(ar=-0.7,ma=-0.6, pacf = FALSE, lag.max = 15), type="h",xlab="lag", 
+     ylab="ACF", ylim=c(-1,1))
+abline(h=0)
+abline(h=c(-0.196, 0.196), col="blue", lty=2)
+title(expression(X[t] == -0.7*X[t-1] + epsilon[t]-0.6 * epsilon[t-1]))
+
+plot(ARMAacf(ar=-0.7,ma=-0.6, pacf = TRUE, lag.max = 15), type="h",xlab="lag", 
+     ylab="PACF", ylim=c(-1,1))
+abline(h=0)
+abline(h=c(-0.196, 0.196), col="blue", lty=2)
+title(expression(X[t] == -0.7*X[t-1] + epsilon[t]-0.6 * epsilon[t-1]))
+```
+
+
+### Analysis of the Lynx Data
+```{r}
+lynx=lynx
+
+par(mfrow=c(2,1))
+plot.ts(lynx, ylab="No.", main="Numbers of Lynx Trapped")
+plot.ts(log(lynx), ylab="log(No.)", main="Log(Numbers) of Lynx Trapped")
+
+par(mfrow=c(2,1))
+acf(log(lynx), ylab="ACf", main="ACF of log transformed time series")
+pacf(log(lynx), ylab="PACF", main="PACF of log transformed time series")
+
+
+# Although it is suggested that there is a cyclical behaviour of about 9–10 
+# years per cycle in this dataset, differencing to remove the cyclic behavior 
+# does not help.Give it a try.
+plot.ts(diff(log(lynx),10))
+
+```
+
+Fit an Autoregression:
+```{r}
+# an AR(11) model was fitted to the data based on the Akaike information 
+# criterion (H. Tong, "Some comments on the Canadian lynx data—with discussion" 
+# J. Roy. Statist. Soc. A , 140 (1977) pp. 432–435; 448–468)
+loglynx.ARmodel<-ar.yw(log(lynx))
+loglynx.ARmodel
+```
+
+Check for Stationarity:
+```{r}
+polyroot(c(1,-loglynx.ARmodel$ar)) # Find zeros of a real or complex polynomial.
+```
+Note some roots come in complex pairs but all roots have absolute value greater than unity:
+
+```{r}
+abs(polyroot(c(1,-loglynx.ARmodel$ar)))
+```
+Residual diagnostics:
+```{r}
+par(mfrow=c(2,2))
+resids<-loglynx.ARmodel$resid[-(1:12)]
+ts.plot(resids,type="h")
+acf(resids,lag.max=30,main="")
+pacf(resids,lag.max=30,main="")
+qqnorm(resids)
+```
+
+Simplification of the AR(11) model.
+
+```{r}
+cbind(loglynx.ARmodel$ar,diag(loglynx.ARmodel$asy.var.coef)^0.5) 
+# asy.var.coef:
+# (univariate case, order > 0.) The asymptotic-theory variance matrix of the 
+# coefficient estimates.
+```
+
+Note that many coefficients are not significantly different from zero. First refit using MLE for comparison with constrained model:
+
+```{r}
+loglynx.AR.mle<-arima(log(lynx),order=c(11,0,0),method="ML")
+loglynx.AR.mle
+```
+Try a model with coefficients 5 through 9 constrained to zero.
+
+```{r}
+loglynx.AR.mle.constrained<-arima(log(lynx),order=c(11,0,0), fixed=c(rep(NA,4),
+                                      rep(0,5),rep(NA,3)),method="ML")
+loglynx.AR.mle.constrained
+```
+Check for Stationarity:
+```{r}
+polyroot(c(1,-loglynx.AR.mle.constrained$coef[1:11])) 
+```
+Note some roots come in complex pairs but all roots have absolute value greater than unity:
+
+```{r}
+abs(polyroot(c(1,-loglynx.AR.mle.constrained$coef[1:11])))
+```
+Residual diagnostics:
+```{r}
+par(mfrow=c(2,2))
+resids<-c(1,-loglynx.AR.mle.constrained$resid[-(1:12)])
+ts.plot(resids,type="h")
+acf(resids,lag.max=30,main="")
+pacf(resids,lag.max=30,main="")
+qqnorm(resids)
+```
+**Note** We can also use {\tt auto.arima} function form {\tt forecast} package for finding the best model to fit the data. Note that the model is different from the suggested model by Tong. for more about fitted models to this data refer to \url{here}{https://encyclopediaofmath.org/wiki/Canadian_lynx_series#References}
+```{r}
+library(forecast)
+auto.arima(log(lynx), max.p=15, max.q=15)
+```
+

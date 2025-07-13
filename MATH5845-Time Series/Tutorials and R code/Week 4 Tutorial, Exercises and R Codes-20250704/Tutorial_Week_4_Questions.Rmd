@@ -1,0 +1,65 @@
+---
+title: "Tutorial: Week 4"
+author:
+- Deparment of Statistics
+- University of New South Wales
+outpute:
+  pdf_document: default
+  html_notebook: default
+output: pdf_document
+---
+
+
+# Packages
+
+```{r, message=FALSE}
+library(astsa)
+#data(package="astsa")
+library(itsmr)
+library(forecast)
+```
+
+The following two practical examples are based on Shumway and Stoffer (2017).
+
+
+
+### Global Warming 
+Consider the global temperature series, provided ${\tt gtemp\_land}$ data set from the ${\tt astsa}$ package. The data are the global mean land temperature index from 1880 to 2023. In particular, the data are deviations, measured in degrees centigrade, from the 1951–1980 average. We note an apparent upward trend in the series during the latter part of the twentieth century that has been used as an argument for the global warming hypothesis. Note also the leveling off at about 1935 and then another rather sharp upward trend at about 1970. 
+
+**(i)** Plot the data along with its ACF and PACF and comment.
+
+**(ii)** There is an upward trend in the data. Use differencing to detrend the data. Plot the deta along with ACF and PACF and comment. 
+
+
+**(iii)** Fit an ARMA(p,q) model to ${\tt gtemp\_land}$ after differencing and check the residuals.
+
+
+**(iv)** After deciding on an appropriate model, forecast (with limits) the next 10 years.
+Comment.
+
+
+
+\clearpage
+
+### Sulfur dioxide levels from the LA pollution study
+
+${\tt so2}$ data set in the ${\tt astsa}$ package provides sulfur dioxide levels which is used in a study on the possible effects of temperature and pollution on weekly mortality in Los
+Angeles County. The data is collected from 1970 to 1980. 
+
+**(i)** Plot the data along with its ACF and PACF.
+
+**(ii)** There seems to be a trend in the data. Use differencing to detrend the data. Plot the differenced series along with its ACF and PACF and comment.
+
+
+**(iii)** Fit an ARMA(p, q) model to the series and perform all
+of the necessary diagnostics. 
+
+
+**(iv)** After deciding on an appropriate model, forecast the
+data into the future four time periods ahead (about one month) and calculate 95%
+prediction intervals for each of the four forecasts. Comment.
+
+
+**(v)** Take ${\tt log}$ from the original series and fit the model again. Compare the results.
+
+

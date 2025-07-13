@@ -1,0 +1,109 @@
+---
+title: 'Tutorial: Week 1'
+author:
+- Deparment of Statistics
+- University of New South Wales
+output:
+  pdf_document: default
+  html_notebook: default
+  word_document: default
+  output: pdf_document
+  html_document:
+    df_print: paged
+---
+  
+### Packages
+  
+```{r, message=FALSE}
+library(astsa)
+#data(package="astsa")
+library(itsmr)
+library("dygraphs")
+```
+
+## Use of R for Basic Time Series Analysis
+
+The use of R for time series analysis is growing very rapidly and the number
+of available libraries, packages and functions is getting very large. This
+course will introduce some of these.
+
+This section aims to introduce you to the use of R for basic time series
+analysis - plotting, smoothing, least squares regression and estimation of autocorrelations using two examples.
+
+First, we look at the basics.
+
+### Getting Started
+
+As a starting point we will access the *R* material that is provided by David
+Stoffer for his book, Shumway and Stoffer (2017) \href{http://www.stat.pitt.edu/stoffer/tsa4/}{Time Series Analysis
+and its Applications: with R Examples,} 4rd Edition, Springer-Verlag. This is
+one of the recommended texts for this course.
+
+### First steps
+
+1. Install *R*. It runs on Linux, Windows and MacOS. You can find the link to download *R* and some more resources \href{https://www.stat.pitt.edu/stoffer/tsda/}{here}.
+    
+2. I strongly recommend you use RStudio (unless you have other preferences), which can be installed from \href{https://www.rstudio.com/products/rstudio/download/}{Rstudio} website.
+    
+3. Familiarize yourselves with the various material available through links at \href{http://www.stat.pitt.edu/stoffer/tsa4/}{Time Series Analysis and Its Applications} homepage.
+
+4. Invoke *R* or *RStudio* and start using it. Decide on the directory in which you want
+    to do your work and change to that directory. 
+    
+5. *R* Script files: It is strongly recommended that you get in the habit of using the script file feature of *R*. You can start a new script file (a plain text file that has an extension `.r` or `.R`) easily with the pull down menus in R or R Studio. Create your *R* commands in that file (save it periodically - the best place may be the same directory as the current workspace) and run all commands or a selection as you need to. In this way you will be creating and saving *R* program scripts which can be recalled, edited or expanded in a subsequent session. By the end of the course you should have quite a collection of such scripts.
+    
+6. \href{https://rmarkdown.rstudio.com/lesson-1.html}{R Markdown}: I will be using this for many demonstrations and you should also consider this - it is easy to use and produces nice enough reports. If you are a latex user you can also write maths in your reports using *R* Markdown. To start with, you can find some Tutorial and cheat sheet for R markdown \href{https://rmarkdown.rstudio.com/lesson-1.html}{here}. Another, shorter,  \href{http://rmarkdown.rstudio.com/articles_intro.html}{tutorial} is available to help you get started. 
+    
+
+### Useful *R* Functions for This Week
+
+* **Reading the data from a file**: 
+    + *read.csv*
+* **Define the data as time series**
+    + *ts*
+* **Plot the time series**
+    + *plot*
+    + *ts.plot*
+    + *plot.ts*
+* **Differencing**
+    + *diff*
+* **(Partial) Auto-Correlation Function**
+    + *acf*
+    + *pacf* refers to Partial Auto-Correlation Function. We will learn more about this function in the coming weeks.
+    + *acf1* from *astsa* package
+    + *acf2* from *astsa* package
+
+
+## Practical Exercises
+
+### Analysis of Iowa Wine Sales using *R* Markdown
+
+In the United States the alcohol industry has traditionally been a heavily regulated industry. Wine and spirits were sold only in a limited number of state-owned and operated stores for as many as fifty years after the end of Prohibition. Over the past thirty to forty years several states have abandoned their retail monopoly structure, with the extent and timing of the deregulation varying between state to state. Consequently, abrupt and dramatic increases in alcohol availability ensued. In Iowa for instance, retail outlets rapidly increased from 200 state stores to 800 private wine outlets and 400 spirits outlets on the 1st of July 1985 (time of intervention). Nearly all grocery and convenience stores entered the market, Sunday sales were legalised, hours of sales were extended, advertising was allowed and alcohol could be purchased on credit.
+
+Data on monthly consumption of wine in Iowa was obtained from January 1968 to December 1997 (n = 360). Source of wine data is the Wine Institute, based on reports from the Bureau of Alcohol, Tobacco and Firearms, U.S. Department of the Treasury. You need to download the data set *IOWA.csv* (a comma seperated file) from Moodle.
+
+The file *IowaWineAnalysis.Rmd* is an *R Markdown* script for producing some  graphs for this dataset. 
+    
+i)  Initially execute each code chunk in sequence, examine the output (all graphs in this case) and write some brief summary notes on what you have done and what you observe.
+
+ii) Create a new *R markdown* script which reads in the data and presents a time series plot and an autocorrelation function for the combined lag 1 and lag 12 differences of log of wine sales per head for the post-intervention period (from July 1985).
+
+iii) Compare the new graphs with the corresponding graphs of pre-intervention data produced by the commands in part (i) and give a brief summary of your conclusions. You need to compare the time series graphs and their autocorrelation functions noting any differences and similarities between the time series plots and autocorrelation functions between the pre- and post- intervention data.
+
+
+
+### Trends in Global Temperatures
+
+The data set *gtemp\_both* presents  annual temperature anomalies (in degress centigrade) averaged over the Earth's land and ocean area from 1850 to 2023. Anomalies are with respect to the 1991-2020 average. One primary question is whether there is a significant (statistically and physically) upward trend in the data.
+
+i) Plot the  data and summarize the basic features of this graph.
+
+ii) Consider fitting a straight line regression to these data. Review the output appearing in the *R* Console, which summarizes the regression fit. In particular consider the significance of the trend on time.
+
+iii) List the assumptions that are required for valid use of the t-statistic in assessing the significance of regression coefficients. In particular do you think that the assumption of independent residuals is valid? Assess this using the time series plot and autocorrelation function of the residuals.
+
+
+  a) Do you think that the residuals from fitting a straight line are independent?
+  
+  b) Describe any dependence in terms of the behaviour of the autocorrelation function.
+

@@ -1,0 +1,190 @@
+---
+title: 'Tutorial: Week 4'
+author:
+- Deparment of Statistics
+- University of New South Wales
+outpute:
+  pdf_document: default
+  html_notebook: default
+output:
+  html_document:
+    df_print: paged
+---
+
+
+# Packages
+
+```{r, message=FALSE}
+library(astsa)
+#data(package="astsa")
+library(itsmr)
+library(forecast)
+```
+
+The following two practical examples are based on Shumway and Stoffer (2017).
+
+
+
+# Global Warming 
+Consider the global temperature series, provided ${\tt gtemp\_land}$ data set from the ${\tt astsa}$ package. The data are the global mean land temperature index from 1880 to 2023. In particular, the data are deviations, measured in degrees centigrade, from the 1951–1980 average. We note an apparent upward trend in the series during the latter part of the twentieth century that has been used as an argument for the global warming hypothesis. Note also the leveling off at about 1935 and then another rather sharp upward trend at about 1970. 
+
+**(i)** Plot the data along with its ACF and PACF and comment.
+
+```{r}
+plot(gtemp_land, type="o", ylab="Global Temperature Deviations")
+acf2(gtemp_land)
+
+```
+**Solution** 
+
+An upward trend is apparent in the plot of the data. ACF shows a slow decreasing trend and PACF has significant values in lags 1,2,3 and 12.
+
+
+
+**(ii)** There is an upward trend in the data. Use differencing to detrend the data. Plot the deta along with ACF and PACF and comment. 
+```{r}
+diff_gtemp_land= diff(gtemp_land)
+plot(diff_gtemp_land, type="o", ylab="Global Temperature Deviations")
+acf2(diff_gtemp_land)
+mean(diff_gtemp_land)
+# 0.01595376
+
+```
+**Solution**
+
+It appears that the differenced process shows minimal autocorrelation,
+which may imply the global temperature series is nearly a random walk with drift.
+It is interesting to note that if the series is a random walk with drift, the mean of the
+differenced series, which is an estimate of the drift, is about .008, or an increase of
+about 1.5 degree centigrade per 100 years.
+
+\textcolor{red}{\bf For the rest of the question note that model fits to the diffrenced series not the original one.}
+
+**(ii)** Fit an ARMA(p,q) model to ${\tt gtemp\_land}$ after differencing and check the residuals.
+
+
+**Solution**
+
+PACF is decreasing (tailing off) and ACF seems to cut off after lag 1, with some significant value in lag 12. Therefore,  we fit MA(1) and MA(12) to the data and check the output. 
+
+
+```{r}
+# MA(1)
+
+model_ma1 = arima(diff_gtemp_land, order = c(0, 0, 1)) #stats::arima
+model_ma1
+tsdiag(model_ma1) #In LB the null hypothesis is independence 
+#par(mfrow=c(3,1))
+#plot(model_ma1$residuals)
+#acf(model_ma1$residuals)
+#qqnorm(model_ma1$residuals)
+
+## Another solution sarima from astsa package
+sarima(diff_gtemp_land, p=0, d=0, q=1)
+# note the differences in the output
+
+```
+
+
+```{r}
+
+# MA(12)
+model_ma12 = arima(diff_gtemp_land, order = c(0, 0, 12)) 
+model_ma12
+tsdiag(model_ma12)
+#par(mfrow=c(3,1))
+#plot(model_ma12$residuals)
+#acf(model_ma12$residuals)
+#qqnorm(model_ma12$residuals)
+
+## Another solution sarima from astsa package
+sarima(diff_gtemp_land, p=0, d=0, q=12)
+```
+
+As can be seen in the output, ARMA(0,1) fits the differenced series well.
+
+**(iii)** After deciding on an appropriate model, forecast (with limits) the next 10 years.
+Comment.
+
+
+**Solution**
+
+```{r}
+# Using functions in stats package
+model_ma1_pred = predict(model_ma1, n.ahead=10) 
+ts.plot(diff_gtemp_land, model_ma1_pred$pred, col=1:2)
+lines(model_ma1_pred$pred + model_ma1_pred$se, col=4, lty=2)
+lines(model_ma1_pred$pred - model_ma1_pred$se, col=4, lty=2)
+
+# another solution
+sarima.for(diff_gtemp_land, 10, 0, 0, 1)
+
+sarima.for(gtemp_land, 10, 0, 1, 1)
+```
+
+\clearpage
+
+# Sulfur dioxide levels from the LA pollution study
+
+${\tt so2}$ data set in the ${\tt astsa}$ package provides sulfur dioxide levels which is used in a study on the possible effects of temperature and pollution on weekly mortality in Los
+Angeles County. The data is collected from 1970 to 1980. 
+
+**(i)** Plot the data along with its ACF and PACF.
+```{r}
+plot(so2)
+acf2(so2)
+```
+
+
+
+**(ii)** There seems to be a trend in the data. Use differencing to detrend the data. Plot the differenced series along with its ACF and PACF and comment.
+```{r}
+so2_diff = diff(so2)
+plot(so2_diff)
+acf2(so2_diff)
+```
+
+\textcolor{red}{\bf For the rest of the question note that model fits to the diffrenced series not the original one.}
+
+**(iii)** Fit an ARMA(p, q) model to the series and perform all
+of the necessary diagnostics. 
+```{r}
+# ARMA(0,4)
+# arima(so2_diff, order = c(0,0,4))
+sarima(so2_diff, p=0, d=0, q=4)
+sarima(so2_diff, p=0, d=0, q=1)
+
+
+```
+
+
+**(iv)** After deciding on an appropriate model, forecast the
+data into the future four time periods ahead (about one month) and calculate 95%
+prediction intervals for each of the four forecasts. Comment.
+```{r}
+sarima.for(so2, n.ahead=4, p=0, d=1, q=1)
+```
+
+
+**(v)** Take ${\tt log}$ from the original series and fit the model again. Compare the results.
+
+```{r}
+BoxCox.lambda(so2)
+
+so2_log=log(so2)
+plot(so2_log)
+acf2(so2_log)
+
+so2_log_diff=diff(so2_log)
+plot(so2_log_diff)
+acf2(so2_log_diff)
+
+
+sarima(so2_log_diff,0,0,3)
+sarima(so2_log_diff,0,0,1)
+
+
+
+sarima.for(so2_log_diff,4,0,0,1)
+```
+

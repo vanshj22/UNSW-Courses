@@ -1,0 +1,44 @@
+---
+title: 'Tutorial: Week 5'
+author:
+- Department of Statistics
+- University of New South Wales
+outpute:
+  pdf_document: default
+  html_notebook: default
+output:
+  html_document:
+    df_print: paged
+---
+
+
+# Packages
+
+```{r, message=FALSE}
+library(astsa)
+#data(package="astsa")
+library(itsmr)
+library(forecast)
+```
+
+### Anaylsis of West Virginia Beer Sales per Head.
+        
+**Tasks to be completed**:
+
+- In the  analysis mentioned in the lecture notes, the ARIMA$(0,0,0)\times(0,1,1)_{12}+$constant and the ARIMA$(0,1,1)\times(0,1,1)_{12}$ models were fit using the  *sarima* function in the *astsa* package. 
+  - Fit these two model fits using using the inbuilt *arima* command directly. To do this you will need to difference the data at appropriate lags before passing the differenced time series to *arima* function. 
+
+  - Compare your results with those produced above for the corresponding model specification. Identify any differences in parameter estimates and their standard errors. Where there are differences can you ``calibrate'' the values obtained and explain why that is appropriate?
+  
+Some hints are given at the bottom of the file  *Chapter6AnalysisWestVABeer.r*.
+        
+**Some detective work**:
+
+  - Study the manual entry for the inbuild *arima* function briefly note the reason why it will not fit a constant when there is differencing required in the model specification.
+
+  - Study the *sarima* function code carefully. Identify (and list in your answer) the lines of code that cause *sarima* to fit a constant term to differenced data.
+
+  - Explain why *sarima* will not fit a constant (or intercept) term when there is lag 1 and seasonal lag differencing applied together.
+
+
+- Provide a single model that you consider improves on the ARIMA$(0,1,1)\times(0,1,1)_{12}$ model fit above. Explain its advantages and on what criteria you judge it to be a better model. 

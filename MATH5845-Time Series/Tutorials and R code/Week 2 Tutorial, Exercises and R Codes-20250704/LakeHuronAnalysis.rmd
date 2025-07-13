@@ -1,0 +1,126 @@
+---
+title: 'Chapter 2: Analyse Lake Huron Levels'
+output:
+  pdf_document: default
+  html_document: default
+  word_document: default
+--- 
+
+Read and plot series
+
+```{r}
+library(astsa)
+LakeLevel<-scan('LakeHuronLevels.txt')
+ts.plot(ts(LakeLevel,start=1875),ylab="Level (ft)")
+```
+
+Fit time trend line using least squares regression on time trend
+Some possible curvature in trend on time so try quadratic in time:
+
+```{r}
+
+Time<-1:98
+
+LSfit<-lm(LakeLevel~Time)
+
+summary(LSfit)
+
+
+LSfit2<-lm(LakeLevel~Time+I(Time^2))
+plot(Time,LakeLevel,type="l")
+lines(LSfit$fitted,col="red")
+lines(LSfit2$fitted,col="green")
+summary(LSfit2)
+```
+
+Note that the quadratic term is significant.
+Compare autocorrelation functions of residuals from linear and quadratic trend models:
+
+```{r}
+par(mfrow=c(2,1))
+acf2(LSfit$residuals)
+acf2(LSfit2$residuals)
+```
+
+For both the linear and quadratic trends the residual ACF is like an AR(1).
+Fit an AR(1)  model using maximum likelihood and calculate the significance 
+of the linear trend.
+
+```{r}
+LakeLevels.AR1<-arima(LakeLevel,order=c(1,0,0),xreg=Time)
+LakeLevels.AR1
+
+Trendzval<-LakeLevels.AR1$coef[3]/diag(LakeLevels.AR1$var.coef)[3]^0.5
+Trendpval<-2*pnorm(-abs(Trendzval))
+print(Trendpval)
+```
+
+Define a function to summarise the model in standard table form, 
+apply to the linear regression plus AR(1) fit.
+
+```{r}
+arimamodelsummary<-function(arimamodel){
+  coef<-arimamodel$coef
+  se<-diag(arimamodel$var.coef)^0.5
+  zstat<-coef/se
+  pval<-2*pnorm(-abs(zstat))
+  results<-cbind(coef,se,zstat,pval)
+  colnames(results)<-c("Estimate","s.e.","z-val","p-val")
+  print(round(results,4))
+}
+arimamodelsummary(LakeLevels.AR1)
+```
+
+Check if residuals are now showing properties of Gaussian white noise.
+
+```{r}
+par(mfrow=c(1,2))
+acf(LakeLevels.AR1$res)
+qqnorm(LakeLevels.AR1$res)
+```
+
+Still some residual autocorrelation at lag 1 so try AR(2) for residuals:
+
+```{r}
+LakeLevels.AR2<-arima(LakeLevel,order=c(2,0,0),xreg=Time)
+arimamodelsummary(LakeLevels.AR2)
+par(mfrow=c(1,2))
+acf(LakeLevels.AR2$res)
+qqnorm(LakeLevels.AR2$res)
+```
+
+
+How about an ARMA(1,1)....?:
+
+```{r}
+LakeLevels.ARMA11<-arima(LakeLevel,order=c(1,0,1),xreg=Time)
+LakeLevels.ARMA11
+arimamodelsummary(LakeLevels.ARMA11)
+
+par(mfrow=c(1,2))
+acf(LakeLevels.ARMA11$res)
+qqnorm(LakeLevels.ARMA11$res)
+```
+
+Compare the fit of  AR(1), AR(2) and ARMA(1,1) to the data:
+
+```{r}
+par(mfrow=c(1,1))
+plot(Time,LakeLevel,type="l")
+lines(Time,LakeLevel-LakeLevels.AR1$residuals,col="blue")
+lines(Time,LakeLevel-LakeLevels.AR2$residuals,col="red")
+lines(Time,LakeLevel-LakeLevels.ARMA11$residuals,col="green")
+```
+
+Discuss and conclude....
+
+Is the quadratic trend significant??
+
+```{r}
+Time2<-Time^2
+LakeLevels.QuadTrend.AR2<-arima(LakeLevel,order=c(2,0,0),xreg=cbind(Time,Time2))
+arimamodelsummary(LakeLevels.QuadTrend.AR2)
+par(mfrow=c(1,2))
+acf(LakeLevels.QuadTrend.AR2$res)
+qqnorm(LakeLevels.QuadTrend.AR2$res)
+```

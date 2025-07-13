@@ -1,0 +1,264 @@
+---
+title: 'Tutorial: Week 3'
+author:
+ - Deparment of Statistics
+ - University of New South Wales
+output:
+  pdf_document: default
+  html_notebook: default
+  word_document: default
+  html_document:
+    df_print: paged
+---
+
+```{r, include=FALSE}
+options(tinytex.verbose = TRUE)
+```
+  
+### Lynx Data
+  
+Consider the annual number (and their logarithms) of lynx trappings in the Mackenzie River District of North-West Canada for the period 1821 to 1934. The data is available as *LYNX.txt* file on Moodle. The series appears to exhibit an approximately 10-year cycle. The autocorrelation and partial autocorrelation functions of the logged series indicate that the partial autocorrelation becomes insignificant after lag 11. A reasonably good model for the logarithms of the data—based on the Akaike Information Criterion (AIC)—is an AR(11) model with coefficients: 1.139, -0.508, 0.213, -0.270, 0.113, -0.124, 0.068, -0.040, 0.134, 0.185, -0.311. The autoregressive polynomial has all its roots, including some complex pairs, located outside the unit circle, indicating stationarity. Residual diagnostics suggest that the model provides a good fit to the data.
+  
+
+Repeat the analysis on the logged lynx data, fit an appropriate AR model, and comment on the outputs, including model selection, estimated coefficients, stationarity, and residual diagnostics.
+  
+```{r}
+lynx=lynx
+
+par(mfrow=c(2,1))
+plot.ts(lynx, ylab="No.", main="Numbers of Lynx Trapped")
+plot.ts(log(lynx), ylab="log(No.)", main="Log(Numbers) of Lynx Trapped")
+
+par(mfrow=c(2,1))
+acf(log(lynx), ylab="ACf", main="ACF of log transformed time series")
+pacf(log(lynx), ylab="PACF", main="PACF of log transformed time series")
+
+
+# Although it is suggested that there is a cyclical behaviour of about 9–10 
+# years per cycle in this dataset, differencing to remove the cyclic behavior 
+# does not help.Give it a try.
+plot.ts(diff(log(lynx),10))
+
+```
+
+Fit an Autoregression:
+```{r}
+# an AR(11) model was fitted to the data based on the Akaike information 
+# criterion (H. Tong, "Some comments on the Canadian lynx data—with discussion" 
+# J. Roy. Statist. Soc. A , 140 (1977) pp. 432–435; 448–468)
+loglynx.ARmodel<-ar.yw(log(lynx))
+loglynx.ARmodel
+```
+
+Check for Stationarity:
+```{r}
+polyroot(c(1,-loglynx.ARmodel$ar)) # Find zeros of a real or complex polynomial.
+```
+Note some roots come in complex pairs but all roots have absolute value greater than unity:
+
+```{r}
+abs(polyroot(c(1,-loglynx.ARmodel$ar)))
+```
+Residual diagnostics:
+```{r}
+par(mfrow=c(2,2))
+resids<-loglynx.ARmodel$resid[-(1:12)]
+ts.plot(resids,type="h")
+acf(resids,lag.max=30,main="")
+pacf(resids,lag.max=30,main="")
+qqnorm(resids)
+```
+
+Simplification of the AR(11) model.
+
+```{r}
+cbind(loglynx.ARmodel$ar,diag(loglynx.ARmodel$asy.var.coef)^0.5) 
+# asy.var.coef:
+# (univariate case, order > 0.) The asymptotic-theory variance matrix of the 
+# coefficient estimates.
+```
+
+Note that many coefficients are not significantly different from zero. First refit using MLE for comparison with constrained model:
+
+```{r}
+loglynx.AR.mle<-arima(log(lynx),order=c(11,0,0),method="ML")
+loglynx.AR.mle
+```
+Try a model with coefficients 5 through 9 constrained to zero.
+
+```{r}
+loglynx.AR.mle.constrained<-arima(log(lynx),order=c(11,0,0), fixed=c(rep(NA,4),
+                                      rep(0,5),rep(NA,3)),method="ML")
+loglynx.AR.mle.constrained
+```
+Check for Stationarity:
+```{r}
+polyroot(c(1,-loglynx.AR.mle.constrained$coef[1:11])) 
+```
+Note some roots come in complex pairs but all roots have absolute value greater than unity:
+
+```{r}
+abs(polyroot(c(1,-loglynx.AR.mle.constrained$coef[1:11])))
+```
+Residual diagnostics:
+```{r}
+par(mfrow=c(2,2))
+resids<-c(1,-loglynx.AR.mle.constrained$resid[-(1:12)])
+ts.plot(resids,type="h")
+acf(resids,lag.max=30,main="")
+pacf(resids,lag.max=30,main="")
+qqnorm(resids)
+```
+**Note** We can also use {\tt auto.arima} function form {\tt forecast} package for finding the best model to fit the data. Note that the model is different from the suggested model by Tong. for more about fitted models to this data refer to \url{here}{https://encyclopediaofmath.org/wiki/Canadian_lynx_series#References}
+```{r}
+library(forecast)
+auto.arima(log(lynx), max.p=15, max.q=15)
+```
+
+
+### Simulating ARMA time series
+
+This exercise introduces methods for simulation of stationary ARMA($p,q$)
+time series. By completing this exercise you will have a better understanding
+of how autocorrelation functions and partial autocorrelation functions are
+related to parameter values in the ARMA specification. Also you will learn how
+sampling variation impacts the estimated autocorrelations and partial autocorrelations.
+
+A sample script for specifying an ARMA model, plotting the true ACF and PACF
+and simulating several realisations from the model is given in the file *ARMAsims.r*.
+
+
+**Before you start**: Use the *?arima.sim* and *?arima*
+help requests and read the documentation so that you understand how R
+specifies the ARMA model, particularly the signs of the AR and MA coefficients.
+Also check the manual entry for *?polyroot* - this function allows you
+to check if the AR and MA parameters you have chosen satisfy the stationarity
+and invertibility conditions. Example given in the script file. Understand this!
+
+**Tasks**: Experiment by changing the values of the AR, the MA and noise standard deviation parameters as well as the sample size using the code in *ARMAsims.r* - Explore and enjoy, but make some notes about what you are learning.
+
+```{r}
+# Script to simulate ARMA processes and examine their true and sampled ACF, PACF
+armod<-c(0.373, 0.114) # AR(2) for lag 1 diff of DJ Utilities Index
+
+mamod<-c(0.2279, -0.2488)
+# mamod<-NULL # no moving average component.
+sdmod<-sqrt(0.1796)
+nsamples<-100 # 1000 samples from ARMA(2,2)
+abs(polyroot(c(1,-armod))) # Causality
+abs(polyroot(c(1,mamod))) # invertibility
+
+par(mfrow=c(2,1))
+acfmod<-ARMAacf(ar=armod,ma=mamod,lag.max=15)
+pacfmod<-ARMAacf(ar=armod,ma=mamod,lag.max=15,pacf=TRUE)
+# Compare against ACF, PACF for some samples....
+for(i in 1:10){
+par(mfrow=c(3,2))
+plot(acfmod, type="h",xlab="lag",ylim=c(-1,1))
+abline(h=0)
+title("Theoretical ACF")
+plot(pacfmod, type="h",xlab="lag",ylim=c(-1,1))
+abline(h=0)
+title("Theoretical PACF")
+
+x<-arima.sim(n = nsamples, list(ar = armod, ma = mamod),
+          sd = sdmod)
+
+acf(x,lag.max=15, main=paste("Sample Path "))
+pacf(x,lag.max=15, main=paste("Sample Path "))
+ts.plot(x, main=paste("Sample Path "))
+}
+
+```
+
+
+### Finding a good ARMA model
+
+This exercise is concerned with developing an ARMA($p,q$) model for the time
+series of wave heights discussed in the reference by Cowperwaite and Metcalfe
+(2009). These are heights relative to still water level measured at the centre of a wave tank with waves generated by a wave-maker programmed to emulate a rough sea. Since there is no trend or seasonal the assumption of stationarity is probably reasonable.
+
+Commands to read in the data and perform analysis required below are available in the R script file *WaveTankChapter3.r*
+```{r}
+# Read in Data from file
+wave.dat<-read.table("wave.dat",header=T)
+attach(wave.dat)
+# plot full time series and check acf, pacf
+par(mfrow=c(3,1))
+plot(ts(waveht))
+title("Wave Height over 39.7 seconds")
+acf(waveht)
+pacf(waveht)
+```
+- Examine the data for several consecutive subsets of time (for example in 6 blocks of 66 time points). Decide if the series appears to be at least weakly stationary. Discuss with a classmate.
+```{r}
+par(mfrow=c(3,2))
+for (blocknum in 1:6){
+  blocktimes<-(blocknum-1)*66+1:66
+  ts.plot(waveht[blocktimes]) 
+  abline(v=0)
+}
+par(mfrow=c(3,2))
+for (blocknum in 1:6){
+  blocktimes<-(blocknum-1)*66+1:66
+  acf(waveht[blocktimes])
+}
+```
+
+- Use the *ar.yw* command to automatically find the degree of the autoregression which minimizes AIC of model fit. Compare the fitted AR coefficients with their standard errors
+and determine which are individually significant at the approximate $5\%$ level. Check the autogression for stationarity - it should be because the Yule-Walker method guarantees that.
+```{r}
+# Automatically select best AR model using minimum AIC and Yule-Walker fit:
+
+waveht.armod<-ar.yw(waveht)
+waveht.armod.summary<-cbind(waveht.armod$ar,diag(waveht.armod$asy.var.coef)^0.5)
+colnames(waveht.armod.summary)<-c("phi","s.e.")
+round(waveht.armod.summary,3)
+
+abs(polyroot(c(1,-waveht.armod$ar))) # check stationarity of fit!
+
+# Fitting the AR(13) with MLE:
+waveht.ar13MLEfit<-arima(waveht,order=c(13,0,0), method="ML")
+waveht.ar13MLEfit
+```
+
+- Examine the residuals from that choice using the ACF and PACF as well as
+a qqnorm plot. Are these white noise?
+```{r}
+# Check if residuals from best AR model are white noise, Gaussian.
+par(mfrow=c(2,2))
+
+ts.plot(waveht.armod$resid,type="h")
+
+acf(waveht.armod$resid,na.action=na.pass)
+pacf(waveht.armod$resid,na.action=na.pass)
+qqnorm(waveht.armod$resid)
+
+```
+
+- Experiment with different mixed ARMA specifications. Start with the ARMA(2,1) model provided, look at the residual ACF and PACF and try to reason your way to other choices of orders $(p,q)$. The aim is to find a more parsimonious model than the best AR model which has similar residual properties (white noise) and has smaller prediction variance.
+```{r}
+waveht.arma<-arima(waveht,order=c(2,0,1), method="ML")
+waveht.arma
+
+# compare variance of 1-step prediction with best AR model:
+
+waveht.arma$sigma2  # variance of innovations for ARMA model
+waveht.armod$var.pred # variance of innovations for AR model
+
+# which is the winner?
+
+# Check if residuals from ARMA model are white noise, Gaussian.
+par(mfrow=c(2,2))
+
+ts.plot(waveht.arma$resid,type="h")
+
+acf(waveht.arma$resid,na.action=na.pass)
+pacf(waveht.arma$resid,na.action=na.pass)
+qqnorm(waveht.arma$resid)
+```
+
+- Conclude: What is your final model? Summarise the parameter values in a
+mathematical equation with standard errors. Also state the residual variance
+estimate and discuss how well the residuals conform to Gaussian white noise.
+

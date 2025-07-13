@@ -1,0 +1,55 @@
+---
+title: 'Tutorial: Week 2'
+author:
+  - Deparment of Statistics
+  - University of New South Wales
+output:
+  pdf_document: default
+  html_notebook: default
+  word_document: default
+  output: pdf_document
+---
+  
+### Packages
+  
+```{r, message=FALSE}
+library(astsa)
+#data(package="astsa")
+library(itsmr)
+library("dygraphs")
+```
+
+### Dow Jones Utilities Index
+
+Using the data in the file *DowJonesUtil.txt* 
+
+* replicate the analysis and conclusions in Section 3.1.5. 
+
+* Check the assumptions that the residuals from the ARMA(1,1) model are normal and uncorrelated. Start by plotting four graphs in one frame: Original series, its ACF, lag 1 differenced series, its ACF. Comment. 
+
+* Fit the AR(1), the MA(1) and the ARMA(1,1). Compare your results with those reported in Section 3.1.5.
+
+* Plot the observed ACF and the model ACF (theoretical using the model estimates) for the three models considered. Discuss.
+
+    
+### Overshorts analysis
+
+Consider the overshorts data in *overshorts.txt*. 
+
+* Perform a standard t-test (use the *R* command *t.test(..)*) and draw your conclusions about the hypothesis that the mean level of overshorts is zero versus the alternative that the tank is not leaking (one-sided alternative since we really do not expect the tank to be gaining, unless the pump meter is dodgy!). 
+
+* Look at the sample ACF for the overshorts series, discuss if the MA(1) model seems appropriate, fit this model using the *arima*. Command and reconsider your previous conclusion concerning the hypothesis that the tank is not leaking. 
+
+* Check the properties of the residuals. 
+
+* Plot the model ACF for the fitted model and compare with the observed ACF.
+
+
+### Lake Huron analysis
+
+The data are in *LakeHuronLevels.txt* and an *R*-script which performs most of the analysis required is in *LakeHuronAnalysis.Rmd*. 
+
+* Use this file to understand how to assess serial dependence in simple regression settings and to include modelling serial dependence in the regression modelling. 
+            
+* Experiment with alternative specifications of the autocorrelation in the residuals and record your conclusions.
+ 

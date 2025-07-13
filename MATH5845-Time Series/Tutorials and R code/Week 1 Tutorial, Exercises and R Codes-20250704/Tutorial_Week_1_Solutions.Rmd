@@ -1,0 +1,242 @@
+---
+title: 'Tutorial: Week 1 (Solutions)'
+author:
+  - Atefeh Zamani
+  - Deparment of Statistics
+  - University of New South Wales
+output:
+  pdf_document: default
+  html_notebook: default
+  word_document: default
+  output: pdf_document
+---
+  
+### Packages
+  
+```{r, message=FALSE}
+library(astsa)
+#data(package="astsa")
+library(itsmr)
+library("dygraphs")
+```
+
+## Practical Exercises
+
+### Analysis of Iowa Wine Sales using *R* Markdown
+
+In the United States the alcohol industry has traditionally been a heavily regulated industry. Wine and spirits were sold only in a limited number of state-owned and operated stores for as many as fifty years after the end of Prohibition. Over the past thirty to forty years several states have abandoned their retail monopoly structure, with the extent and timing of the deregulation varying between state to state. Consequently, abrupt and dramatic increases in alcohol availability ensued. In Iowa for instance, retail outlets rapidly increased from 200 state stores to 800 private wine outlets and 400 spirits outlets on the 1st of July 1985 (time of intervention). Nearly all grocery and convenience stores entered the market, Sunday sales were legalised, hours of sales were extended, advertising was allowed and alcohol could be purchased on credit.
+
+Data on monthly consumption of wine in Iowa was obtained from January 1968 to December 1997 (n = 360). Source of wine data is the Wine Institute, based on reports from the Bureau of Alcohol, Tobacco and Firearms, U.S. Department of the Treasury. You need to download the data set *IOWA.csv* (a comma seperated file) from Moodle.
+
+The file *IowaWineAnalysis.Rmd* is an *R Markdown* script for producing some  graphs for this dataset. 
+    
+i)  Initially execute each code chunk in sequence, examine the output (all graphs in this case) and write some brief summary notes on what you have done and what you observe.
+
+In the United States the alcohol industry has traditionally been a heavily regulated industry. Wine and spirits were sold only in a limited number of state-owned and operated stores for as many as fifty years after the end of Prohibition. Over the past thirty to forty years several states have abandoned their retail monopoly structure, with the extent and timing of the deregulation varying between state to state. Consequently, abrupt and dramatic increases in alcohol availability ensued. In Iowa for instance, retail outlets rapidly increased from 200 state stores to 800 private wine outlets and 400 spirits outlets on the **1st of July 1985**. Nearly all grocery and convenience stores entered the market, Sunday sales were legalised, hours of sales were extended, advertising was allowed and alcohol could be purchased on credit.
+
+Data on monthly consumption of wine in Iowa was obtained from **January 1968** to **December 1997** ($n$ = 360). Source of wine data is the Wine Institute, based on reports from the Bureau of Alcohol, Tobacco and Firearms, U.S. Department of the Treasury. You need to download the data set *IOWA.csv* (a comma seperated file) from Moodle.
+
+
+```{r}
+library(astsa)
+library(forecast)
+IowaData = read.csv("IOWA.csv")
+```
+
+*Create a time series of the monthly sales of wine and produce a
+suitably labelled time series plot* :
+
+```{r}
+IowaWSts<-ts(IowaData$WineSales,
+             start=IowaData$Year[1],frequency=12)
+
+ts.plot(IowaWSts, ylab="Litres of Ethanol", 
+        main="Iowa Wine Consumption \n 1968 to 1998")
+
+abline(v=1985+6/12,col="red",lwd="2")
+
+```
+
+Discuss this plot and summarize the main features: trend, seasonal and
+variability patterns.
+Note that prior to the formal implementation of the intervention in July, 1985
+there appeared to be a `stock-up effect' as shelves were filled.
+
+- **There is an increasing trend from January 1968 till June 1985, followed by a jump and the exponentially decreasing tren**
+
+- **There is a clear seasonal trend, especially before June 1985 and after 1990**
+
+- **The data exhibits increasing seasonal variation with the level of the series. Therefore, a log-transformation may ‘equalise’ variability and reduce heteroskedasticity**
+
+- **Note that there are different functions that can be used to plot time series, such as  *plot*, *ts.plot* (Multiple Time Series) and *plot.ts*. What are the differences between these function?**
+
+Now try plotting on a log scale:
+
+```{r}
+ts.plot(log(IowaWSts), ylab="log(Litres of Ethanol)",
+	 main="Log of Iowa Wine Consumption \n 1968 to 1998")
+abline(v=1985+6/12,col="red",lwd="2")
+```
+
+Discuss this plot and comment on what features are altered with the log scaling.
+
+**Since the variation in the original time series increases with time, we apply the Box-Cox Transformation to the data. To find the proper transformation you can use *forecast::BoxCox.lambda*. Note that *forecast::BoxCox.lambda* refers to *BoxCox.lambda* in the *forecast* package. As the suggested value of lambda is close to zero ($\lambda=0.1849869$), we apply log function to the data. As can be seen, there is still seasonality and trend in the date but the variation is now more stable.**
+
+Now look at wine sales per head:
+
+```{r}
+IowaWSperHts<-ts(IowaData$WineSales/IowaData$Popln,start=IowaData$Year[1],frequency=12)
+ts.plot(IowaWSperHts, ylab="Litres of Ethanol per Head",
+	 main="Iowa Wine Consumption \n 1968 to 1998")
+abline(v=1985+6/12,col="red",lwd="2")
+```
+
+Discuss and compare with previous time series plots.
+
+Because the series is clearly impacted by the privatization
+policy change we will use the series pre-intervention to develop our
+understanding of basic ideas such as differencing and seasonal differencing
+and there use in obtaining a stationary series as well as the sample
+autocorrelation function.
+
+Extract the subseries of interest (many ways to do this, here is
+one way using the *window* function)
+```{r}
+par(mfrow=c(2,1))
+IowaWSperHts.part1=window(IowaWSperHts,start=c(1968,1),end=c(1985,6))
+ts.plot(IowaWSperHts.part1, ylab="Litres of Ethanol",
+        main="Iowa Wine Consumption per Head \n 1968 to June 1985")
+abline(v=1985+6/12,col="red",lwd="2")
+ts.plot(log(IowaWSperHts.part1), ylab="log(Litres of Ethanol)",
+	 main="Log of Iowa Wine Consumption per Head\n 1968 to June 1985")
+abline(v=1985+6/12,col="red",lwd="2")
+```
+
+## Analysis of Seasonally difference Data
+
+Use Lag 1 and Seasonal Lag differences on the time series and plot the time series and the autocorrelation function. 
+
+**Since there is an increasing trend in the data along with some seasonal behaviour, we apply Lag 1 and Seasonal Lag differences. Note that changing the order of differencing in lags 1 and 12  does not affect the final time series and its acf. **
+
+```{r}
+d12diff<-diff(log(IowaWSperHts.part1), lag=12)
+par(mfrow=c(2,1))
+ts.plot(d12diff, ylab="log(Litres of Ethanol)",
+	 main="Log Iowa Wine Consumption per Head  \n 1968 to June 1985")
+abline(h=0)
+abline(v=1985+6/12,col="red",lwd="2")
+acf(d12diff)
+```
+
+```{r}
+d1d12diff<-diff(d12diff, lag=1)
+par(mfrow=c(2,1))
+ts.plot(d1d12diff, ylab="log(Litres of Ethanol)",
+	 main="Log Iowa Wine Consumption per Head  \n 1968 to June 1985")
+abline(h=0)
+abline(v=1985+6/12,col="red",lwd="2")
+acf(d1d12diff)
+
+# acf1: Produces a plot (and a printout) of the sample ACF or PACF. The zero lag value of the ACF is removed.
+# acf2: Produces a simultaneous plot (and a printout) of the sample ACF and PACF on the same scale. The zero lag value of the ACF is removed.
+```
+
+
+ii) Create a new *R markdown* script which reads in the data and presents a time series plot and an autocorrelation function for the combined lag 1 and lag 12 differences of log of wine sales per head for the post-intervention period (from July 1985).
+
+```{r}
+par(mfrow=c(2,1))
+IowaWSperHts.part2=window(IowaWSperHts,start=c(1985,7))
+ts.plot(IowaWSperHts.part2, ylab="Litres of Ethanol",
+        main="Iowa Wine Consumption per Head \n after June 1985 ")
+abline(v=1985+6/12,col="red",lwd="2")
+ts.plot(log(IowaWSperHts.part2), ylab="log(Litres of Ethanol)",
+	 main="Log of Iowa Wine Consumption per Head\n after June 1985")
+abline(v=1985+6/12,col="red",lwd="2")
+```
+**As can be ssn in the data plot, starting from July 1985, the seasonal pattern in the data appears to have been disrupted for a period but became more apparent again from 1990 onwards. Now, let's apply lag-1 and lag-12 differencing to the logarithm of wine sales per head.**
+
+```{r}
+d12diff.part2<-diff(log(IowaWSperHts.part2), lag=12)
+par(mfrow=c(2,1))
+ts.plot(d12diff.part2, ylab="log(Litres of Ethanol)",
+	 main="Log Iowa Wine Consumption per Head  \n after June 1985")
+abline(h=0)
+abline(v=1985+6/12,col="red",lwd="2")
+acf(d12diff)
+```
+
+```{r}
+d1d12diff.part2<-diff(d12diff.part2, lag=1)
+par(mfrow=c(2,1))
+ts.plot(d12diff.part2, ylab="log(Litres of Ethanol)",
+	 main="Log Iowa Wine Consumption per Head  \n after June 1985")
+abline(h=0)
+abline(v=1985+6/12,col="red",lwd="2")
+acf(d12diff.part2)
+
+# acf1: Produces a plot (and a printout) of the sample ACF or PACF. The zero lag value of the ACF is removed.
+# acf2: Produces a simultaneous plot (and a printout) of the sample ACF and PACF on the same scale. The zero lag value of the ACF is removed.
+```
+
+
+iii) Compare the new graphs with the corresponding graphs of pre-intervention data produced by the commands in part (i) and give a brief summary of your conclusions. You need to compare the time series graphs and their autocorrelation functions noting any differences and similarities between the time series plots and autocorrelation functions between the pre- and post- intervention data.
+
+
+
+### Trends in Global Temperatures
+
+The data set *gtemp\_both* presents annual temperature anomalies (in degress centigrade) averaged over the Earth's land and ocean area from 1850 to 2023. Anomalies are with respect to the 1991-2020 average. One primary question is whether there is a significant (statistically and physically) upward trend in the data.
+
+i) Plot the  data and summarize the basic features of this graph.
+```{r include = FALSE}
+options(tinytex.verbose = TRUE)
+library(astsa)
+```
+These data are a combination of land-air average temperature
+anomalies (from the 1961-1990 average) measured in degrees centigrade for the
+years 1900-1997". 
+
+```{r}
+plot(gtemp_both, type="o", ylab="Global Temperature Deviations")
+```
+
+*Comments:* 
+
+* There is clearly an upward trend over time, possible quadratic or exponential in shape but we will start with a straight line fit. **
+
+ii) Consider fitting a straight line regression to these data. Review the output appearing in the *R* Console, which summarizes the regression fit. In particular consider the significance of the trend on time.
+```{r}
+gtemp=gtemp_both
+summary(fit <- lm(gtemp~time(gtemp)))
+plot(gtemp, type="o", ylab="Global Temperature Deviations")
+abline(fit,lwd=2,col=2)
+fit = lm(gtemp~time(gtemp), na.action=NULL) # regress gtemp on time
+
+```
+*Comments:* 
+
+* The fitted line has highly significant positive slope and provides a reasonable first approximation to the mean level through time.
+
+* There is random variation around the line characterized by a combination of rapid up and down oscillation and a longer period wave of period above the line, below the line, above the line and so on. The latter suggests that there may be serial dependence in these residuals. Furthermore it will be positive serial dependence.
+
+
+iii) List the assumptions that are required for valid use of the t-statistic in assessing the significance of regression coefficients. In particular do you think that the assumption of independent residuals is valid? Assess this using the time series plot and autocorrelation function of the residuals.
+
+
+  a) Do you think that the residuals from fitting a straight line are independent?
+  
+  b) Describe any dependence in terms of the behaviour of the autocorrelation function.
+
+```{r}
+par(mfrow=c(3,1))
+plot(resid(fit), type="h",
+main="Residuals from LS line fit", ylab="Residuals")
+acf(resid(fit), 48, main="ACF of Residuals")
+pacf(resid(fit), 48, main="ACF of Residuals")
+```
+*Comments:*
+
+* The time series plot of residuals uses the 'h' style which isgood for showing residuals through time. It shows more clearly the longer period ``wave'' form pattern.
+
+* The estimted ACF has individual 95% significance bands under the assumption of no serial dependence. There is significant persistent and moderately strong positive autocorrelation at lags 1 to 25. This is consistent with an autoregressive process or a mixed autoregressive moving average process.

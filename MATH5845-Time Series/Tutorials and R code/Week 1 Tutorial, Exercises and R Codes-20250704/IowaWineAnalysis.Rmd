@@ -1,0 +1,122 @@
+---
+title: "IowaWineAnalysis"
+output:
+  pdf_document: default
+  html_document: default
+  word_document: default
+---
+
+In the United States the alcohol industry has traditionally been a heavily regulated industry. Wine and spirits were sold only in a limited number of state-owned and operated stores for as many as fifty years after the end of Prohibition. Over the past thirty to forty years several states have abandoned their retail monopoly structure, with the extent and timing of the deregulation varying between state to state. Consequently, abrupt and dramatic increases in alcohol availability ensued. In Iowa for instance, retail outlets rapidly increased from 200 state stores to 800 private wine outlets and 400 spirits outlets on the **1st of July 1985**. Nearly all grocery and convenience stores entered the market, Sunday sales were legalised, hours of sales were extended, advertising was allowed and alcohol could be purchased on credit.
+
+Data on monthly consumption of wine in Iowa was obtained from **January 1968** to **December 1997** ($n$ = 360). Source of wine data is the Wine Institute, based on reports from the Bureau of Alcohol, Tobacco and Firearms, U.S. Department of the Treasury. You need to download the data set *IOWA.csv* (a comma seperated file) from Moodle.
+
+
+```{r}
+library(astsa)
+library(forecast)
+IowaData = read.csv("IOWA.csv")
+```
+
+Create a time series of the monthly sales of wine and produce a
+suitably labelled time series plot:
+
+```{r}
+IowaWSts<-ts(IowaData$WineSales,
+             start=IowaData$Year[1],frequency=12)
+
+ts.plot(IowaWSts, ylab="Litres of Ethanol", 
+        main="Iowa Wine Consumption \n 1968 to 1998")
+
+# plot
+# ts.plot (Multiple Time Series)
+# plot.ts
+
+abline(v=1985+6/12,col="red",lwd="2")
+```
+
+Discuss this plot and summarize the main features: trend, seasonal and
+variability patterns.
+Note that prior to the formal implementation of the intervention in July, 1985
+there appeared to be a `stock-up effect' as shelves were filled.
+
+Now try plotting on a log scale:
+
+```{r}
+# Box-Cox transformation 
+# forecast package 
+# BoxCox.lambda
+par(mfrow=c(2,1))
+
+ts.plot(log(IowaWSts), ylab="log(Litres of Ethanol)",
+	 main="Log of Iowa Wine Consumption \n 1968 to 1998")
+abline(v=1985+6/12,col="red",lwd="2")
+```
+
+Discuss this plot and comment on what features are altered with the log scaling.
+
+Now look at wine sales per head:
+
+```{r}
+IowaWSperHts<-ts(IowaData$WineSales/IowaData$Popln,start=IowaData$Year[1],frequency=12)
+
+par(mfrow=c(2,1))
+ts.plot(IowaWSperHts, ylab="Litres of Ethanol per Head",
+	 main="Iowa Wine Consumption \n 1968 to 1998")
+abline(v=1985+6/12,col="red",lwd="2")
+ts.plot(log(IowaWSperHts), ylab="log Litres of Ethanol per Head",
+	 main="Iowa Wine Consumption \n 1968 to 1998")
+abline(v=1985+6/12,col="red",lwd="2")
+```
+
+Discuss and compare with previous time series plots.
+
+Because the series is clearly impacted by the privatization
+policy change we will use the series pre-intervention to develop our
+understanding of basic ideas such as differencing and seasonal differencing
+and there use in obtaining a stationary series as well as the sample
+autocorrelation function.
+
+Extract the subseries of interest (many ways to do this, here is
+one way using the *window* function)
+```{r}
+par(mfrow=c(2,1))
+IowaWSperHts.part1=window(IowaWSperHts,start=c(1968,1),end=c(1985,6))
+ts.plot(IowaWSperHts.part1, ylab="Litres of Ethanol",
+        main="Log Iowa Wine Consumption per Head \n 1968 to June 1985")
+abline(v=1985+6/12,col="red",lwd="2")
+ts.plot(log(IowaWSperHts.part1), ylab="log(Litres of Ethanol)",
+	 main="Log of Iowa Wine Consumption per Head\n 1968 to June 1985")
+abline(v=1985+6/12,col="red",lwd="2")
+```
+
+##Analysis of Seasonally difference Data
+
+Use Lag 1 and Seasonal Lag differences on the time series and plot the time series and the autocorrelation function. 
+
+```{r}
+d12diff<-diff(log(IowaWSperHts.part1), lag=12)
+par(mfrow=c(2,1))
+ts.plot(d12diff, ylab="log(Litres of Ethanol)",
+	 main="Log Iowa Wine Consumption per Head  \n 1968 to June 1985")
+abline(h=0)
+abline(v=1985+6/12,col="red",lwd="2")
+
+par(mfrow=c(2,1))
+acf(IowaWSperHts.part1)
+acf(d12diff)
+```
+
+
+
+```{r}
+d1d12diff<-diff(d12diff, lag=1)
+par(mfrow=c(2,1))
+ts.plot(d1d12diff, ylab="log(Litres of Ethanol)",
+	 main="Log Iowa Wine Consumption per Head  \n 1968 to June 1985")
+abline(h=0)
+abline(v=1985+6/12,col="red",lwd="2")
+acf2(d1d12diff)
+# acf1 
+# acf2
+```
+

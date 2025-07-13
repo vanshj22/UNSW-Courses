@@ -1,0 +1,369 @@
+---
+title: 'Tutorial: Week 2- Solution'
+author:
+  - Deparment of Statistics
+  - University of New South Wales
+output:
+  pdf_document: default
+  html_notebook: default
+  word_document: default
+  output: pdf_document
+---
+  
+### Packages
+  
+```{r, message=FALSE}
+library(astsa)
+#data(package="astsa")
+library(itsmr)
+library("dygraphs")
+```
+
+### Dow Jones Utilities Index
+
+Using the data in the file *DowJonesUtil.txt*
+
+- replicate the analysis and conclusions in Section 3.1.5. 
+
+```{r}
+# Convert the 'dowj' data (from itsmr package) into a time series object
+DJUtilIndex = ts(dowj)
+
+# Set up the graphics window to show 2 rows and 2 columns of plots
+par(mfrow=c(2,2))
+
+# Plot the original Dow Jones Utilities Index time series
+ts.plot(DJUtilIndex, main = "Original Series")
+
+# Plot the autocorrelation function (ACF) of the original series
+acf(DJUtilIndex, main = "ACF of Original Series")
+
+# Take the first difference to remove trend and make the series stationary
+DJUtilIndex.D1 <- diff(DJUtilIndex)
+
+# Plot the differenced series
+ts.plot(DJUtilIndex.D1, main = "Differenced Series (Lag 1)")
+abline(h=0)  # Add a horizontal reference line at 0
+
+# Plot the ACF of the differenced series
+acf(DJUtilIndex.D1, main = "ACF of Differenced Series")
+
+DJUtilIndex.arima<- arima(DJUtilIndex, order = c(1,1,1), 
+                                include.mean = FALSE, method = "CSS")
+DJUtilIndex.arima
+
+# Fit an ARMA(1,1) model to the differenced data using Conditional Sum of Squares (CSS) method
+DJUtilIndex.ARMA11_CSS <- arima(DJUtilIndex.D1, order = c(1,0,1), 
+                                include.mean = FALSE, method = "CSS")
+DJUtilIndex.ARMA11_CSS
+# Fit an ARMA(1,1) model to the differenced data using Maximum Likelihood (ML) method
+DJUtilIndex.ARMA11_ML <- arima(DJUtilIndex.D1, order = c(1,0,1), 
+                               include.mean = FALSE, method = "ML")
+
+# Display the result of the ML-fitted ARMA(1,1) model
+DJUtilIndex.ARMA11_ML
+
+```
+
+
+- Check the assumptions that the residuals from the ARMA(1,1) model are normal and uncorrelated. 
+
+```{r}
+res_dj = DJUtilIndex.ARMA11_ML$residuals
+
+plot(res_dj, main = "Residuals from the ARMA(1,1) model")
+```
+To check normaility, you can use histogram, qqplot and shapiro test:
+
+```{r}
+# Histogram
+hist(res_dj, breaks = 10, probability = TRUE, xlim = c(-1.5,2), xlab = "Residuals", main = "Histogram of residuals from the ARMA(1,1) model")
+curve(dnorm(x, mean=mean(res_dj), sd=sd(res_dj)), add=TRUE, col="red")
+
+# Q-Q plot
+qqnorm(res_dj)
+qqline(res_dj, col = "red")
+
+# Shapiro-Wilk test
+shapiro.test(res_dj)
+# Null hypothesis: data are normally distributed.
+# Small p-value --> reject normality.
+```
+Uncorrelatedness can be checked visually using ACF plot of residuals or we can use Ljung-Box test
+```{r}
+# ACF plot of residuals
+acf(res_dj, main = "ACF of residuals from the ARMA(1,1) model")
+
+#Ljung-Box test (for white noise)
+Box.test(res_dj, lag = 20, type = "Ljung-Box")
+#Null hypothesis: residuals are uncorrelated (white noise).
+#Small p-value --> autocorrelation exists --> model may be inadequate.
+```
+
+
+- Fit the AR(1), the MA(1) and the ARMA(1,1). Compare your results with those reported in Section 3.1.5.
+
+- Plot the observed ACF and the model ACF (theoretical using the model estimates) for the three models considered. Discuss.
+
+```{r}
+# Fit an AR(1) model to the differenced data (no intercept)
+DJUtilIndex.AR1 <- arima(DJUtilIndex.D1, order = c(1, 0, 0), include.mean = FALSE)
+
+# Display the AR(1) model summary
+DJUtilIndex.AR1
+
+# Fit a MA(1) model to the differenced data (no intercept)
+DJUtilIndex.MA1 <- arima(DJUtilIndex.D1, order = c(0, 0, 1), include.mean = FALSE)
+
+# Display the MA(1) model summary
+DJUtilIndex.MA1
+
+# Set up the graphics window to show 2 rows and 2 columns of plots
+par(mfrow = c(2, 2))
+
+# Plot the observed ACF of the differenced data
+acf(DJUtilIndex.D1, lag.max = 15, main = "Observed ACF DJ Utilities Index")
+
+# Compute and plot the theoretical ACF for the fitted AR(1) model
+AR1acf <- ARMAacf(ar = coef(DJUtilIndex.AR1), ma = 0, lag.max = 15)
+plot(as.integer(names(AR1acf)), AR1acf, type = "h", xlab = "lag", ylim = c(-0.2, 1))
+abline(h = 0)
+title("Theoretical ACF AR(1) Fit")
+
+# Compute and plot the theoretical ACF for the fitted MA(1) model
+MA1acf <- ARMAacf(ar = 0, ma = coef(DJUtilIndex.MA1), lag.max = 15)
+plot(as.integer(names(MA1acf)), MA1acf, type = "h", xlab = "lag", ylim = c(-0.2, 1))
+abline(h = 0)
+title("Theoretical ACF MA(1) Fit")
+
+# Compute and plot the theoretical ACF for the fitted ARMA(1,1) model
+ARMA11acf <- ARMAacf(
+  ar = coef(DJUtilIndex.ARMA11_ML)[1],
+  ma = coef(DJUtilIndex.ARMA11_ML)[2],
+  lag.max = 15
+)
+plot(as.integer(names(ARMA11acf)), ARMA11acf, type = "h", xlab = "lag", ylim = c(-0.2, 1))
+abline(h = 0)
+title("Theoretical ACF ARMA(1,1) Fit")
+
+```
+    
+### Overshorts analysis
+
+Consider the overshorts data in *overshorts.txt*. 
+
+- Perform a standard t-test (use the *R* command *t.test(..)*) and draw your conclusions about the hypothesis that the mean level of overshorts is zero versus the alternative that the tank is not leaking (one-sided alternative since we really do not expect the tank to be gaining, unless the pump meter is dodgy!). 
+
+The analysis summarized here is based on Brockwell and Davis (2002). The data were collected as part of a large scale routine monitoring of gasoline stations in Colorado.
+
+-  $X_{t}:$ the amount measured using a dipstick in the inground petrol storage tank at the end of day $t$
+
+- $A_{t}:$ the amount of petrol sold during the day minus any amount that was delivered during the day. 
+
+We expect that 
+\[
+    X_{t} \approx X_{t-1} + {\tt delivered}_t - {\tt sold}_t =  X_{t-1} -A_t.
+\]
+Let the `overshorts' be denoted by
+
+\[
+Y_{t}=X_{t}-X_{t-1}+A_{t}%
+\]
+
+Under the assumption of no measurement error and no leakage in the tank we should have $Y_{t}\equiv0$. In practice there is measurement variability. In this case the `overshorts' $Y_{t}$ will be samples from a distribution with mean $\mu$. If the tank is not leaking into the subsoil then we should have $H_{0}:\mu=0.$ We want to test this null hypothesis against the alternative that the tank is leaking $H_{a}:\mu<0.$
+```{r}
+overshorts=scan('overshorts.txt')
+ts.plot(overshorts)
+abline(h=0)
+
+#t_test_stat=(mean(overshorts))/(sqrt(var(overshorts)/length(overshorts)))
+
+t.test(overshorts, alternative = "less")
+```
+
+- Look at the sample ACF for the overshorts series, discuss if the MA(1) model seems appropriate, fit this model using the *arima*. Command and reconsider your previous conclusion concerning the hypothesis that the tank is not leaking. 
+
+```{r}
+acf(overshorts)
+overshorts.ma1<-arima(overshorts,order=c(0,0,1), include.mean=T, method= "ML")
+overshorts.ma1
+t_stat=overshorts.ma1$coef[2]/sqrt(overshorts.ma1$var.coef[2,2])
+t_stat
+pt(t_stat, df=56)
+```
+
+
+- Check the properties of the residuals. 
+```{r}
+model_Res = overshorts.ma1$residuals
+plot(model_Res, main = "Residuals from fitting MA(1) to overshorts data")
+
+# Normality
+# Q-Q plot
+qqnorm(model_Res)
+qqline(model_Res, col = "red")
+
+# Shapiro-Wilk test
+shapiro.test(model_Res)
+
+# Uncorrelatedness
+acf(model_Res, main = "ACF of residuals from fitting MA(1) to overshorts data")
+Box.test(model_Res, lag = 20, type = "Ljung-Box")
+```
+
+- Plot the model ACF for the fitted model and compare with the observed ACF.
+```{r}
+par(mfrow = c(2,2))
+acf(overshorts)
+pacf(overshorts)
+
+MA1acf <- ARMAacf(ar = 0, ma = coef(overshorts.ma1), lag.max = 15)
+plot(as.integer(names(MA1acf)), MA1acf, type = "h", xlab = "lag", ylim = c(-0.2, 1))
+abline(h = 0)
+title("Theoretical ACF MA(1) Fit")
+
+
+MA1pacf <- ARMAacf(ar = 0, ma = coef(overshorts.ma1), lag.max = 15, pacf = TRUE)
+plot( MA1pacf, type = "h", xlab = "lag", ylim = c(-0.2, 1))
+abline(h = 0)
+title("Theoretical PACF MA(1) Fit")
+```
+
+
+### Lake Huron analysis
+
+The data are in *LakeHuronLevels.txt* and an *R*-script which performs most of the analysis required is in *LakeHuronAnalysis.Rmd*. 
+
+- Use this file to understand how to assess serial dependence in simple regression settings and to include modelling serial dependence in the regression modelling. 
+
+- Experiment with alternative specifications of the autocorrelation in the residuals and record your conclusions.
+
+*Solution*
+Read and plot series
+
+```{r}
+library(astsa)
+LakeLevel<-scan('LakeHuronLevels.txt')
+ts.plot(ts(LakeLevel,start=1875),ylab="Level (ft)")
+```
+
+Fit time trend line using least squares regression on time trend
+Some possible curvature in trend on time so try quadratic in time:
+
+```{r}
+
+Time<-1:98
+
+LSfit<-lm(LakeLevel~Time)
+
+summary(LSfit)
+
+
+LSfit2<-lm(LakeLevel~Time+I(Time^2))
+plot(Time,LakeLevel,type="l")
+lines(LSfit$fitted,col="red")
+lines(LSfit2$fitted,col="green")
+summary(LSfit2)
+```
+
+Note that the quadratic term is significant.
+Compare autocorrelation functions of residuals from linear and quadratic trend models:
+
+```{r}
+par(mfrow=c(2,1))
+acf2(LSfit$residuals)
+acf2(LSfit2$residuals)
+```
+
+For both the linear and quadratic trends the residual ACF is like an AR(1).
+Fit an AR(1)  model using maximum likelihood and calculate the significance 
+of the linear trend.
+
+```{r}
+LakeLevels.AR1<-arima(LakeLevel,order=c(1,0,0),xreg=Time)
+LakeLevels.AR1
+
+Trendzval<-LakeLevels.AR1$coef[3]/diag(LakeLevels.AR1$var.coef)[3]^0.5
+Trendpval<-2*pnorm(-abs(Trendzval))
+print(Trendpval)
+```
+
+Define a function to summarise the model in standard table form, 
+apply to the linear regression plus AR(1) fit.
+
+```{r}
+arimamodelsummary<-function(arimamodel){
+  coef<-arimamodel$coef
+  se<-diag(arimamodel$var.coef)^0.5
+  zstat<-coef/se
+  pval<-2*pnorm(-abs(zstat))
+  results<-cbind(coef,se,zstat,pval)
+  colnames(results)<-c("Estimate","s.e.","z-val","p-val")
+  print(round(results,4))
+}
+arimamodelsummary(LakeLevels.AR1)
+```
+
+Check if residuals are now showing properties of Gaussian white noise.
+
+```{r}
+par(mfrow=c(1,2))
+acf(LakeLevels.AR1$res)
+qqnorm(LakeLevels.AR1$res)
+qqline(LakeLevels.AR1$res, col = "red")
+```
+
+Still some residual autocorrelation at lag 1 so try AR(2) for residuals:
+
+```{r}
+LakeLevels.AR2<-arima(LakeLevel,order=c(2,0,0),xreg=Time)
+LakeLevels.AR2$aic
+
+arimamodelsummary(LakeLevels.AR2)
+par(mfrow=c(1,2))
+acf(LakeLevels.AR2$res)
+qqnorm(LakeLevels.AR2$res)
+qqline(LakeLevels.AR2$res, col = "red")
+```
+
+
+How about an ARMA(1,1)....?:
+
+```{r}
+LakeLevels.ARMA11<-arima(LakeLevel,order=c(1,0,1),xreg=Time)
+LakeLevels.ARMA11
+arimamodelsummary(LakeLevels.ARMA11)
+
+par(mfrow=c(1,2))
+acf(LakeLevels.ARMA11$res)
+qqnorm(LakeLevels.ARMA11$res)
+qqline(LakeLevels.ARMA11$res, col = "red")
+
+```
+
+Compare the fit of  AR(1), AR(2) and ARMA(1,1) to the data:
+
+```{r}
+par(mfrow=c(1,1))
+plot(Time,LakeLevel,type="l")
+lines(Time,LakeLevel-LakeLevels.AR1$residuals,col="blue")
+lines(Time,LakeLevel-LakeLevels.AR2$residuals,col="red")
+lines(Time,LakeLevel-LakeLevels.ARMA11$residuals,col="green")
+```
+
+Discuss and conclude....
+
+Is the quadratic trend significant??
+
+```{r}
+Time2<-Time^2
+LakeLevels.QuadTrend.AR2<-arima(LakeLevel,order=c(2,0,0),xreg=cbind(Time,Time2))
+LakeLevels.QuadTrend.AR2$aic
+
+arimamodelsummary(LakeLevels.QuadTrend.AR2)
+par(mfrow=c(1,2))
+acf(LakeLevels.QuadTrend.AR2$res)
+qqnorm(LakeLevels.QuadTrend.AR2$res)
+qqline(LakeLevels.QuadTrend.AR2$res, col = "red")
+
+```

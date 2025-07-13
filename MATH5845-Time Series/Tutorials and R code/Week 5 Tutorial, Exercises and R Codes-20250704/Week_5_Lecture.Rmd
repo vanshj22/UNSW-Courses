@@ -1,0 +1,185 @@
+---
+title: "MATH5845 --- Time Series Analysis: Week 5"
+author:
+- Atefeh Zamani
+- Deparment of Statistics
+- University of New South Wales
+outpute:
+  pdf_document: default
+  html_notebook: default
+output:
+  html_document:
+    df_print: paged
+---
+
+
+# Packages
+
+```{r, message=FALSE}
+library(astsa)
+#data(package="astsa")
+library(itsmr)
+```
+
+
+### Simulated Data from ARIMA(l, 1, 0) Model (Example 6.3)
+
+Simulate 200 observation from ARIMA(l, 1, 0) with $\phi = 0.8$ and $\sigma_W = 1$. Plot its sample autocorrelation and partial autocorrelation functions.
+```{r}
+set.seed(2023)
+sim_data=astsa::sarima.sim(ar = 0.8, d = 1, ma =0, n = 200, t0 =0)
+
+par(mfrow=c(3,1))
+plot.ts(sim_data)
+acf(as.numeric(sim_data),lag.max=40)
+pacf(as.numeric(sim_data),lag.max=40)
+
+sim_data_diff=diff(sim_data)
+par(mfrow=c(3,1))
+plot.ts(sim_data_diff)
+acf(as.numeric(sim_data_diff),lag.max=40)
+pacf(as.numeric(sim_data_diff),lag.max=40)
+
+sim_estimate_mle1=ar.mle(sim_data_diff,aic = TRUE, order.max = 1)
+sim_estimate_mle1
+
+sim_estimate_ols2=ar.ols(sim_data, aic = TRUE, order.max = 2)
+sim_estimate_ols2
+
+```
+
+### IMA(1, 1) and EWMA (Example 6.5)
+
+Simulate 100 observations from an IMA(1,1)model with $\lambda= - \theta = 0.8$ and then calculate and
+display the fitted EWMA superimposed on the data. This is accomplished using the
+${\tt Holt-Winters}$ command in ${\tt R}.
+
+```{r}
+set.seed(2023)    
+x = sarima.sim(ma = -0.8, d=1, n = 100)
+plot.ts(x)
+acf2(as.numeric(x),max.lag=40)
+
+(x.ima = HoltWinters(x, beta=FALSE, gamma=FALSE))  # alpha is 1-lambda.
+# beta parameter of Holt-Winters Filter. If set to FALSE, the function will do exponential smoothing.
+plot(x.ima)
+
+```
+
+
+### Analysis of GNP Data (Example 6.6)
+
+Consider the analysis of quarterly U.S. GNP from 1947(1) to 2002(3), $n = 223$ observations. The data are real U.S. gross national product in billions of chained 1996 dollars and have been seasonally adjusted.
+
+Plot the data along with its ACF and PACF.
+```{r}
+par(mfrow=c(3,1))
+gnp=ts(gnp, start=1947, frequency =4)
+tsplot(gnp[1:100], col=4)
+acf(gnp, 50)          
+pacf(gnp, 50)
+```
+
+Calculate the growth rate and plot its time series along with the sample ACF and PACF. 
+```{r}
+gnpgr = diff(log(gnp))      # growth rate:diff(log(x))
+
+#dev.new()
+tsplot(gnpgr, col=4)
+abline(h=mean(gnpgr))
+
+#dev.new()
+acf2(gnpgr, 24)  
+```
+
+Suggest some models for the data and check their goodness of fit. 
+```{r}
+sarima(gnpgr, 1, 0, 0)      # AR(1)
+sarima(gnpgr, 0, 0, 2)      # MA(2) 
+sarima(gnpgr, 0, 0, 2, no.constant=TRUE) # MA(2) without drift
+ARMAtoMA(ar=.35, ma=0, 10)  # prints psi-weights
+
+
+library(forecast)
+Arima(gnpgr, c(1, 0, 0))
+Arima(gnpgr, c(0, 0, 2))
+
+
+auto.arima(gnpgr )
+
+auto.arima(gnp,lambda="auto")
+```
+
+
+### A Seasonal AR Series (Example 6.7) 
+
+Simulate a monthly data for 3 years which follows a first-order seasonal autoregressive series with $\Phi=0.9$. 
+```{r}
+set.seed(666)
+SAR = sarima.sim(sar=.9, S=12, n=37) + 50
+layout(matrix(c(1,2, 1,3), nc=2), heights=c(1.5,1))
+tsplot(SAR, type="c", xlab="Year")
+ abline(v=1:3, col=4, lty=2)
+ points(SAR, pch=Months, cex=1.35, font=4, col=1:6)
+
+phi  = c(rep(0,11),.9)
+ACF  = ARMAacf(ar=phi, ma=0, 100)[-1] # [-1] removes 0 lag
+PACF = ARMAacf(ar=phi, ma=0, 100, pacf=TRUE)
+ LAG = 1:100/12   # time index
+ # LAG1=1:100
+tsplot(LAG, ACF, type="h", xlab="LAG", ylim=c(-.04,1))
+# tsplot(LAG1, ACF, type="h", xlab="LAG", ylim=c(-.04,1))
+ abline(h=0, col=8)
+tsplot(LAG, PACF, type="h", xlab="LAG", ylim=c(-.04,1))
+# tsplot(LAG1, PACF, type="h", xlab="LAG", ylim=c(-.04,1))
+ abline(h=0, col=8)
+ 
+# acf(SAR)
+# pacf(SAR)
+```
+
+### A Mixed Seasonal Model (Example 6.8)
+
+Create the theoretical ACF and PACF of ARMA$(0, 1) \times  (1, 0)_{12}$ with with $\Phi$ = .8 and $\theta$ = -.5.
+```{r}
+par(mfrow=1:2)
+phi  = c(rep(0,11),.8)
+ACF  = ARMAacf(ar=phi, ma=-.5, 50)[-1]
+PACF = ARMAacf(ar=phi, ma=-.5, 50, pacf=TRUE)
+ LAG = 1:50/12
+tsplot(LAG, ACF, type="h", xlab="LAG", ylim=c(-.4,.8), col=4, lwd=2)
+ abline(h=0, col=8)
+tsplot(LAG, PACF, type="h", xlab="LAG", ylim=c(-.4,.8), col=4, lwd=2)
+ abline(h=0, col=8)
+```
+
+
+### Example 5.14: Air Passengers
+```{r}
+x     = AirPassengers
+log_x    = log(x) 
+dlog_x   = diff(log_x) 
+ddlog_x  = diff(dlog_x, 12)
+tsplot(cbind(x, log_x, dlog_x, ddlog_x), main="")
+
+
+acf2(as.numeric(ddlog_x,50))
+# below of interest for showing seasonal persistence (not shown here):
+par(mfrow=c(2,1))
+monthplot(dlog_x)
+monthplot(ddlog_x)
+
+sarima(log_x, 1,1,1, 0,1,1, 12)   # model 1
+sarima(log_x, 0,1,1, 0,1,1, 12)   # model 2 (the winner)
+sarima(log_x, 1,1,0, 0,1,1, 12)   # model 3
+
+dev.new()
+sarima.for(log_x, 12, 0,1,1, 0,1,1,12)  # forecasts
+
+
+
+library(forecast)
+auto.arima(x, lambda="auto", seasonal = TRUE)
+
+```
+

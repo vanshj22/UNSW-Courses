@@ -1,0 +1,269 @@
+---
+title: "MATH5845 --- Time Series Analysis: Week 1 (T2- 2025)"
+author:
+- Atefeh Zamani
+- Deparment of Statistics
+- University of New South Wales
+outpute:
+  pdf_document: default
+ 
+output:
+  pdf_document: default
+---
+
+If you need help to knit the *R Markdown* file to pdf, \href{https://yihui.org/tinytex/r/#debugging}{this link} might help
+
+### Packages
+The following packages will be used in Chapter 1.
+```{r, message=FALSE}
+library(astsa) 
+#data(package="astsa") #Using this command you can find the list of available 
+# data sets in the package "astsa"
+library(dygraphs)
+```
+
+### Multivariate Normal Distribution
+
+In the following, we are going to plot the contour plot and density function of a bivariate normal distribution. You can change the mean vector and variance-covariance matrix to see the effect.
+
+First, we define the grid of $x$ and $y$ values over which the density will be evaluated. The mean vector *mu* and the variance-covariance matrix *sigma* specify the parameters of the bivariate normal distribution. We then define a function f to calculate the density values using the *dmnorm* function from the *mnormt* package.
+
+The *outer* function is used to apply the density function over the grid of $x$ and $y$ values, producing a matrix $z$ of density values. We create a *contour* plot of these values to visualize the density.
+
+Next, we prepare to create a 3D perspective plot by setting up a color palette that interpolates between specified colors. We compute the z-values at the facet centers by averaging the z-values at the corners of each facet. These facet center values are then mapped to color indices, which are used to color the facets in the perspective plot.
+
+Finally, the *persp* function is used to create a 3D perspective plot of the density function, with the facets colored according to their z-values, providing a visual representation of the bivariate normal distribution's density surface.
+
+```{r}
+library(mnormt)
+
+x     <- seq(-5, 5, 0.25) 
+y     <- seq(-5, 5, 0.25)
+mu    <- c(0, 0)
+sigma <- matrix(c(2, 0, 0, 3), nrow = 2)
+f     <- function(x, y) dmnorm(cbind(x, y), mu, sigma) 
+                        #dmnorm: multivariate normal density 
+z     <- outer(x, y, f) # Use ?outer to get more information about this function
+
+# Contour plot
+contour(x, y, z, nlevels = 9, col = 1:9, xlim = c(-4,4), ylim=c(-4,4)) 
+# Create a contour plot, or add contour lines to an existing plot.
+
+nrz <- nrow(z)
+ncz <- ncol(z)
+# Create a function interpolating colors in the range of specified colors
+jet.colors <- colorRampPalette( c("yellow", "red") )
+# Generate the desired number of colors from this palette
+nbcol <- 100
+color <- jet.colors(nbcol)
+# Compute the z-value at the facet centres
+# The notation z[-i, -j] means taking all elements of z except those in the 
+#i-th row and the j-th  column.
+zfacet <- z[-1, -1] + z[-1, -ncz] + z[-nrz, -1] + z[-nrz, -ncz]
+# Recode facet z-values into color indices
+facetcol <- cut(zfacet, nbcol)
+
+# Density function of bivariate normal
+persp(x, y, z, col = color[facetcol], phi = 30, theta = -30)
+
+```
+
+### Example 1.1: European countries retail trade
+
+The trade sector is crucial to Europe's economy. In 2015, it employed 33 million people and accounted for 9.9\% of the EU's total gross value added. In 2016, the sector generated about 9.9 trillion euros in turnover. This included 57.8\% from wholesale trade (a 1\% drop from 2015), 28.9\% from retail trade, and 13.3\% from automotive trade (a 1\% increase).
+
+Retail trade is vital, complex, and varies with cultural and societal influences. It plays a significant role in understanding a country's economic health. In 2015, retail trade comprised nearly one-third of the trade sector's turnover, employed 8.7\% of the EU workforce, or roughly 18.8 million jobs.
+
+The dataset  *TOVT\_2015.csv* covers total turnover indexes for European countries from 2000 to 2023, focusing on retail trade. These indexes measure market development for goods and services, including all charges passed on to customers but excluding VAT and other similar taxes. The base year for comparison is 2015, with an index value of 100.
+
+```{r}
+tovt=read.csv("TOVT_2015.csv", header=TRUE)
+class(tovt) # class of the data 
+names(tovt) # name of the columns in this dataset
+summary(tovt) # summar of the data (descriptive statistics)
+# change the values in columns 2 to 37 to numeric
+tovt[, 2:37] <- lapply(tovt[, 2:37], as.numeric) 
+summary(tovt,na.rm = TRUE)
+# Convert the data frame to a time series object
+tovt_ts=ts(tovt[,2:37],start=2000,frequency=12) 
+class(tovt_ts)
+
+par(mfrow=c(2,2)) # set up the plotting area to allow for multiple plots to be 
+#arranged in a matrix format
+plot(tovt_ts[,"United.Kingdom"], ylab="TOVT_UK",xlab="Time")
+plot(tovt_ts[,"Spain"], ylab="TOVT_Spain",xlab="Time")
+plot(tovt_ts[,"Sweden"], ylab="TOVT_Sweden",xlab="Time")
+plot(tovt_ts[,"Germany"], ylab="TOVT_Germany",xlab="Time")
+```
+
+### Example 1.2: Sunspot Data
+
+The Wolf number, also known as the relative sunspot number, quantifies the presence of sunspots and sunspot groups on the Sun’s surface. Astronomers have been observing sunspots since the invention of the telescope in 1609. However, the idea of compiling sunspot data from various observers originated with Rudolf Wolf in 1848. The series is now commonly referred to as the international sunspot number series, which exhibits an approximate 11-year periodicity, corresponding to the solar cycle. This cycle was first discovered by Heinrich Schwabe in 1843 and is sometimes called the Schwabe cycle. The series extends back to 1700 with annual values, while daily values exist only since 1818. A revised and updated series has been available since July 1, 2015, with an overall increase by a factor of 1.6 to the entire series. Modern counts now closely reflect raw values, without the traditional scaling applied after 1893. 
+
+The file named *Sunspot.csv* presents the yearly mean total sunspot number from 1700 to 2023 and its contents are structured as follows:
+
+* Column 1: contains the Gregorian calendar year, marking the mid-year date.
+* Column 2: records the yearly mean total number of sunspots.
+* Column 3: details the yearly mean standard deviation of the sunspot numbers collected from individual stations. 
+* Column 4: lists the number of observations used to compute the yearly mean total sunspot number.
+* Column 5: serves as a definitive/provisional marker, where '1' indicates a definitive value and '0' denotes a provisional value.
+
+**Note** The original data, which presents the number of sunspots from 1770 to 1869, has been analyzed in *Introduction to Time Series and Forecasting by Brockwell and Davis*. This dataset is part of the package *itsmr*.  
+
+```{r}
+sunspot=read.csv("Sunspot.csv", sep=";")
+class(sunspot)
+# Rename the columns of the 'sunspot' data frame
+names(sunspot)=c("Year","Sunspot_Number","sd","number_observation","definitive")
+names(sunspot)
+sunspot_ts=ts(sunspot,start=1700,frequency=1)
+class(sunspot_ts)
+
+plot(sunspot_ts[,"Sunspot_Number"], ylab="Number of Sunspot",xlab="Year")
+```
+
+### Example 1.3: Speech data
+
+The *speech* dataset, which is part of the *astsa* package,  is a small 0.1 second (1000 point) sample of recorded speech for the phrase aaa $\ldots$ hhh, and we note the repetitive nature of the signal and the rather regular periodicities. One current problem of great interest is computer recognition of speech, which would require converting this particular signal into the recorded phrase aaa $\ldots$ hhh. Spectral analysis can be used in this context to produce a signature of this phrase that can be compared with signatures of various library syllables to look for a match. Ploting the dat, one can immediately notice the rather regular repetition of small wavelets.
+```{r}
+speech_data= speech #This dataset is available in astsa package
+class(speech_data)
+plot(speech)
+```
+
+### Example 1.4: Global Warming
+
+The data sets *gtemp_land* and *gtemp_ocean*  are part of the *astsa* packageand they show the global mean land-ocean temperature index from 1850 to 2023. They indicate a noticeable increase in temperature towards the end of the 20th century, supporting the global warming hypothesis. There was a stabilization around 1935 followed by a significant rise starting around 1970. The ongoing debate among those concerned with global warming is whether this trend is a natural occurrence or driven by human activities. 
+```{r}
+global_data= cbind(gtemp_land, gtemp_ocean) #These datasets are available in 
+#astsa package
+class(global_data)
+ts.plot(global_data, col=1:2, xlab="Year" )
+# Add a legend
+legend("topleft",            # Position of the legend
+       legend=c("land temperature", "Ocean temperature"), # Labels for each line
+       col=1:2,               # Color of each line
+       lty=1,                 # Line types, assuming simple solid lines
+       cex=0.8)               # Size of the text in the legend
+```
+
+**Note**
+When we define a dataset as a time series, then we have different options to make the plot:
+
+* plot
+* plot.ts: Plotting method for objects inheriting from class "ts".
+* ts.plot: Plot several time series on a common plot. Unlike plot.ts, in ts.plot the series are allowed to start and end at different times. However, all series must share the same frequency (e.g., daily, monthly, yearly) to ensure the data aligns properly along the time axis. 
+
+Another function to plot time series data is {\tt dygraph}. This function is part of {\tt dygraphs} package in {\tt R} and it is an interface to the dygraphs JavaScript charting library. It provides rich facilities for charting time-series data in R. Refer to [this link](https://rstudio.github.io/dygraphs/) for more information.
+```{r}
+dygraph(global_data, ylab="TOVT_UK",xlab="Time", width = "800px", height = "400px")
+```
+
+
+### Example 1.5: Noise process
+
+A particularly useful white noise series is **Gaussian white noise**, wherein the $W_t$ are *independent normal* random variables, with mean 0 and variance $\sigma^2_W$; or more succinctly, $W_t\sim N(0, \sigma^2_W)$. In the following we simulate 500 observations from a Gaussian white noise. 
+
+```{r}
+set.seed(123)
+# plot.ts: Plotting method for objects inheriting from class "ts".
+w = rnorm(500,0,1) # 500 N(0,1) variates
+plot.ts(w, main="white noise")
+```
+
+### Example 1.9: RandomWalk with Drift 
+
+The random walk with drift model is given by
+    \begin{align}
+        X_t = \delta + X_{t-1} + W_t
+    \end{align}
+successively for $t = 1, 2, \ldots$ with initial condition $X_0 = 0,$ and where $W_t$ is white noise. The constant $\delta$ is called the drift, and when $\delta = 0$, $X_t$ is called simply a random walk. The term random walk comes from the fact that, when $\delta = 0,$ the value of the time series at time $t$ is the value of the series at time $t - 1$ plus a completely random movement determined by $W_t.$
+
+In the following code, we simulated 200 observations  from Random walk with $\sigma_W = 1,$ with drift $\delta=0.2$ (*wd*), without drift, $\delta= 0$ (*w*), and straight (dashed) lines with slope $\delta.$
+
+```{r}
+set.seed(145) # so you can reproduce the results
+w = rnorm(200); x = cumsum(w) # two commands in one line
+wd = w +.2; xd = cumsum(wd)
+plot.ts(xd, ylim=c(-5,55), main="random walk", ylab='')
+lines(x, col=4); abline(h=0, col=4, lty=2); abline(a=0, b=.2, lty=2)
+```
+
+
+### Example 1.10: Signal in Noise
+
+The following code generates a cosine wave with a period of 50 points and then contaminates it with additive white Gaussian noise with two different variances, $\sigma_W = 1$ and $\sigma_W = 5$.
+
+```{r}
+set.seed(125)
+cs = 2*cos(2*pi*1:500/50 + .6*pi); w = rnorm(500,0,1)
+par(mfrow=c(3,1), mar=c(3,2,2,1), cex.main=1.5)
+plot.ts(cs, main=expression(2*cos(2*pi*t/50+.6*pi)))
+plot.ts(cs+w, main=expression(2*cos(2*pi*t/50+.6*pi) + N(0,1)))
+plot.ts(cs+5*w, main=expression(2*cos(2*pi*t/50+.6*pi) + N(0,25)))
+```
+
+## Plot the ACF of the provided examples.
+
+### Example 1.11: Differencing a Time Series
+
+**Note** to plot the sample ACF, you may use the functions *astsa::acf1*, *astsa::acf2* or *stats::acf*. 
+
+*Employ.csv* indicates the number of employees in the trade, food and Metals industries in Wisconsin measured each month over five years. We apply lag 1 differencing to remove the smooth underlying trend obvious in the original series. Using the ACF functions for the original time series and the lag 1 differences, it can be seen that after differencing .
+
+```{r}
+Employment<-read.csv("Employ.csv",header=T)
+Metals<-ts(Employment$Metals,start=1970,frequency=12)
+
+#pdf("Chapt1Metals.pdf")
+par(mfrow=c(2,1))
+ts.plot(Metals,main="Employment in Metals Industry")
+ts.plot(diff(Metals),main="Employment in Metals Industry (Lag = 1 diff)")
+abline(h=0)
+#dev.off()
+
+#pdf("Chapt1MetalsACF.pdf")
+par(mfrow=c(1,2))
+acf(Metals,main="Undifferenced", na.action = na.contiguous, demean = TRUE)
+acf(diff(Metals),main="Lag = 1 diff")
+# Note that the x-axis presents lag/frequency. If you want to have lag 
+#(integer values) on the x-axis, use the following lines.
+
+# acf(coredata(Metals),main="Undifferenced", na.action = na.contiguous, demean = TRUE)
+#acf(coredata(diff(Metals)),main="Lag = 1 diff")
+
+```
+
+
+### Example 1.12: Seasonally differenced series
+
+In this example, we are going to analyze the monthly employment numbers in the Trades industry in Wisconsin over a five-year period. When plotting the data, it is evident that there is both a seasonal pattern and a trend. To remove these patterns, we will use differencing with lags of 12 and 1. This process helps to stabilize the mean of the time series by removing the seasonal effects (lag 12) and the overall trend (lag 1).
+```{r}
+Trade<-ts(Employment$Trade,start=1970,frequency=12)
+#pdf("Chap1Trade.pdf")
+par(mfrow=c(3,1))
+ts.plot(Trade,main="Undifferenced")
+ts.plot(diff(Trade,12),main="Lag = 12 diff")
+abline(h=0)
+ts.plot(diff(diff(Trade,12),1),main="Lag = 12 and Lag = 1 diff")
+abline(h=0)
+dev.off()
+
+```
+
+```{r}
+#pdf("Chapt1TradeACF.pdf")
+par(mfrow=c(1,3))
+acf(Trade,lag.max=30,main="Undifferenced")
+abline(v=c(1,2),lty=2)
+acf(diff(Trade,12),lag.max=30,main="Lag = 12 diff")
+abline(v=c(1,2),lty=2)
+acf(diff(diff(Trade,12),1),lag.max=30,main="Lag = 12 and Lag = 1 diff")
+abline(v=c(1,2),lty=2)
+
+acf2(diff(diff(Trade,12),1),plot=FALSE)
+```
+
+
+
+**Question** How can you check that the differencing operators commute in this example?

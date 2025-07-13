@@ -1,0 +1,279 @@
+---
+title: "MATH5845 --- Time Series Analysis: Week 2 (T2- 2025)"
+author:
+- Atefeh Zamani
+- Deparment of Statistics
+- University of New South Wales
+outpute:
+  pdf_document: default
+  html_notebook: default
+output: pdf_document
+---
+
+
+### Packages
+
+```{r, message=FALSE}
+library(astsa)
+data(package="astsa")
+library(itsmr)
+library("dygraphs")
+```
+
+### Example 2.2: Simulated time series from  MA(1) 
+
+Simulate 100 observations from $X_t=Z_t-0.8Z_{t-1},$ where $Z_t\sim N(0,1).$ Plot the ACF of the generated time series.
+```{r}
+set.seed(2024)
+w = rnorm(110,0,1) # 110 N(0,1) variates
+plot.ts(w,xlab="Time",ylab=expression("w "[t]), main="white noise")
+
+par(mfrow=c(2,1))
+v = stats::filter(w, sides=1, filter=c(1,-0.8)) # moving average (default method="convolution")
+plot.ts(v[11:110],xlab="Time",ylab=expression("x "[t]), main="moving average")
+acf(v[11:110], type = "correlation", main="Autocorrelation function")
+#acf(v[11:110], type = "covariance")
+```
+
+Similarly, you can use the following code. 
+
+```{r}
+set.seed(2024)
+v1=arima.sim(n = 100, list(ma = -0.8), sd = 1)
+plot.ts(v1,xlab="Time",ylab=expression("x "[t]), main="moving average")
+acf(v1, type = "correlation", main="Autocorrelation function")
+acf(v1, type = "correlation", plot=FALSE) # get the values of ACF without plot
+```
+**Question**: Can you use *arima.sim* to simulate white noise time series?
+
+* WN <- arima.sim(model = list(order = c(0, 0, 0)), n = 200)*
+
+
+### Example 2.3
+
+Consider the monthly employment in Trades introduced in Chapter 1. The combined seasonal and lag 1 differences appear to be
+stationary in the mean and variance. Let $\{Y_{t}\}$ be the
+original series and let
+\[
+X_{t}=\nabla_{12}\nabla Y_{t}.
+\]
+A good model for $\{X_{t}\}$ is the MA(1) with $\theta=0.4173$ and $\sigma
+^{2}=3.078$. Hence
+\[
+Y_{t}=Y_{t-1}+Y_{t-12}-Y_{t-13}+Z_{t}+0.42Z_{t-1}%
+\]
+where $\{Z_{t}\}\sim$i.i.d.N$(0,3.078)$.
+
+```{r}
+Employment<-read.csv("Employ.csv",header=T)
+Trade<-ts(Employment$Trade,start=1970,frequency=12)
+
+x=diff(diff(Trade,1),12)
+par(mfrow=c(2,1))
+
+ts.plot(x, xlab="Time",ylab=expression("x "[t]), main="diff(diff(Trade,1),12)")
+acf(x,type = "correlation", main="Autocorrelation function")
+
+arima(x,order=c(0,0,1), include.mean=FALSE, method = "CSS") 
+#CCS: conditional sum-of-squares
+arima(x,order=c(0,0,1), include.mean=FALSE, method = "ML")
+
+```
+
+### Example 2.4: Simulation of General linear model
+
+Simulate 300 observations from a Gaussian white noise series $W_t,$  and let $X_t$ be an average of $W_t$ and its immediate neighbors in the past and future:
+            \begin{align}\label{eq_glp}
+                X_t = \frac{1}{3}(W_{t-1}+W_t+W_{t+1})
+            \end{align}
+Plot $W_t$, $X_t$ and their corresponding autocorrelation funvtion. 
+```{r}
+set.seed(123)
+# plot.ts: Plotting method for objects inheriting from class "ts".
+w = rnorm(300,0,1) # 300 N(0,1) variates
+
+v = stats::filter(w, sides=2, filter=c(1,1,1), circular = TRUE) 
+par(mfrow=c(2,2))
+plot.ts(w, xlab="Time", main="White noise process")
+acf(w, main="ACF of noise process")
+
+plot.ts(v, xlab="Time", main="General linear process")
+acf(v, main="ACF of linear process")
+```
+ It can be observed that $x_t$ shows a smoother version of $w_t$, reflecting the fact that the slower oscillations are more apparent and some of the faster oscillations are taken out.
+
+
+### Example 2.5: Simulated time series from  AR(1) 
+Simulate 100 observations from an AR(1) time series with  $\phi = 0.9$, where $Z_t\sim N(0,1)$. Plot the simulated series along with its autocorrelation function.
+```{r}
+set.seed(2024)
+w = rnorm(110,0,1) # 110 N(0,1) variates
+plot.ts(w,xlab="Time",ylab=expression("w "[t]), main="white noise")
+
+par(mfrow=c(2,2))
+v = stats::filter(w, sides=1, filter=c(0.9), method = "recursive") # Autoregressive
+plot.ts(v[11:110],xlab="Time",ylab=expression("x "[t]), main="Autoregressive")
+acf(v[11:110], type = "correlation", main="Autocorrelation function")
+
+
+v1 = stats::filter(w, sides=1, filter=c(-0.9), method = "recursive")
+plot.ts(v1[11:110],xlab="Time",ylab=expression("x "[t]), main="Autoregressive")
+acf(v1[11:110], type = "correlation", main="Autocorrelation function")
+
+
+#acf(v[11:110], type = "covariance")
+```
+
+Similarly, we can use the following code:
+
+```{r}
+v1=arima.sim(n = 100, list(ar = 0.9), sd = 1)
+plot.ts(v1,xlab="Time",ylab=expression("x "[t]), main="moving average")
+acf(v1, type = "correlation", main="Autocorrelation function")
+```
+
+
+### Application
+Show that ARMA(1,1) is an appropriate model for the daily Dow Jones Utilities Index.
+
+```{r}
+library(itsmr)
+DJUtilIndex = ts(dowj) # read data from itsmr
+par(mfrow=c(1,2))
+ts.plot(DJUtilIndex) # plot the data 
+acf(DJUtilIndex)    # plot the acf
+DJUtilIndex.D1<-diff(DJUtilIndex) # take diff 1 to remove trend
+
+par(mfrow=c(3,1))
+ts.plot(DJUtilIndex.D1)
+abline(h=0)
+acf(DJUtilIndex.D1)
+pacf(DJUtilIndex.D1)
+DJUtilIndex.ARMA11_CSS<-arima(DJUtilIndex.D1,order=c(1,0,1), include.mean=FALSE, 
+                              method = "CSS") 
+# fit ARMA(1,1) using CSS
+DJUtilIndex.ARMA11_ML<-arima(DJUtilIndex.D1,order=c(1,0,1), include.mean=FALSE, 
+                             method = "ML") 
+# fit ARMA(1,1) using LM
+DJUtilIndex.ARMA11_ML
+```
+
+Compare observed ACF and Theoretical Model ACF's for AR(1), MA(1) and ARMA(1,1):
+
+```{r}
+
+DJUtilIndex.AR1<-arima(DJUtilIndex.D1,order=c(1,0,0), include.mean=F)
+DJUtilIndex.AR1
+DJUtilIndex.MA1<-arima(DJUtilIndex.D1,order=c(0,0,1), include.mean=F)
+DJUtilIndex.MA1
+
+par(mfrow=c(2,2))
+acf(DJUtilIndex.D1,lag.max=15,main="Observed ACF DJ Utilities Index")
+AR1acf<-ARMAacf(ar=coef(DJUtilIndex.AR1),ma=0,lag.max=15)
+plot(as.integer(names(AR1acf)),AR1acf, type="h",xlab="lag",ylim=c(-0.2,1))
+abline(h=0)
+title("Theoretical ACF AR(1) Fit")
+
+MA1acf<-ARMAacf(ar=0,ma=coef(DJUtilIndex.MA1),lag.max=15)
+plot(as.integer(names(MA1acf)),MA1acf, type="h",xlab="lag",ylim=c(-0.2,1))
+abline(h=0)
+title("Theoretical ACF MA(1) Fit")
+
+
+ARMA11acf<-ARMAacf(ar=coef(DJUtilIndex.ARMA11_ML)[1],
+	ma=coef(DJUtilIndex.ARMA11_ML)[2],lag.max=15)
+plot(as.integer(names(AR1acf)),ARMA11acf, type="h",xlab="lag",ylim=c(-0.2,1))
+abline(h=0)
+title("Theoretical ACF ARMA(1,1) Fit")
+```
+
+### Sample mean for MA(1)
+```{r}
+n=100
+theta=seq(-1,1,by=0.01)
+V_theta= (1/n)*(1+theta)^2/(1+theta^2)
+plot(theta, V_theta, xlab=expression(theta),ylab=expression("V"(theta)),typ="l")
+
+```
+
+### Sample mean for AR(1)
+
+```{r}
+n=100
+sigma = 10
+phi=seq(-1,1,by=0.1)
+V_phi= sigma^2/(1-phi)^2
+plot(phi, V_phi, xlab=expression(phi),ylab=expression("V"(phi)),typ="l")
+
+```
+
+
+### Overshorts Data to Detect Leaky Petrol Tanks 
+
+The analysis summarized here is based on Brockwell and Davis (2002). The data were collected as part of a large scale routine monitoring of gasoline stations in Colorado.
+
+-  $X_{t}:$ the amount measured using a dipstick in the inground petrol storage tank at the end of day $t$
+
+- $A_{t}:$ the amount of petrol sold during the day minus any amount that was delivered during the day. 
+
+We expect that 
+\[
+    X_{t} \approx X_{t-1} + {\tt delivered}_t - {\tt sold}_t =  X_{t-1} -A_t.
+\]
+Let the `overshorts' be denoted by
+\[
+Y_{t}=X_{t}-X_{t-1}+A_{t}%
+\]
+Under the assumption of no measurement error and no leakage in the tank we should have $Y_{t}\equiv0$. In practice there is measurement variability. In this case the `overshorts' $Y_{t}$ will be samples from a distribution with mean $\mu$. If the tank is not leaking into the subsoil then we should have $H_{0}:\mu=0.$ We want to test this null hypothesis against the alternative that the tank is leaking $H_{a}:\mu<0.$
+```{r}
+overshorts=scan('overshorts.txt')
+ts.plot(overshorts)
+abline(h=0)
+
+#t_test_stat=(mean(overshorts))/(sqrt(var(overshorts)/length(overshorts)))
+
+t.test(overshorts, alternative = "less")
+acf(overshorts)
+pacf(overshorts)
+overshorts.ma1<-arima(overshorts,order=c(0,0,1), include.mean=T, method= "ML")
+overshorts.ma1
+t_stat=overshorts.ma1$coef[2]/sqrt(overshorts.ma1$var.coef[2,2])
+t_stat
+pt(t_stat, df=56)
+
+```
+### Lake Huron Levels
+This example, also from Brockwell and Davis (2002), concerns the significance of time
+trends in the level of Lake Huron, one of the Great Lakes of North America.
+The time series consists of annual levels (in feet) reduced by 570 for the
+period 1875 to 1972. 
+
+The series, denoted $Y_{t}$, is modelled using the simple linear trend, with time as the predictive variable:%
+\[
+Y_{t}=\alpha+\beta t+U_{t},\; t=1,\ldots ,98. %
+\]
+
+Is it a good model for this data? 
+```{r}
+huron = lake
+huron = ts(huron, start = 1875, frequency = 1)
+plot.ts(huron, xlab= "Year", ylab="Level (ft)")
+
+Time<-1:98
+
+LSfit<-lm(huron~Time)
+summary(LSfit)
+plot(LSfit$residuals, type="o", ylab="Residuals") 
+abline(h=0)
+
+
+plot(Time,huron,type="l", xlab= "Year", ylab="Level (ft)")
+lines(LSfit$fitted,col="red")
+
+acf2(LSfit$residuals, main="Residuals of the fitted model to Level 
+     of Lake Huron data")
+LakeLevels.AR2<-arima(huron,order=c(2,0,0),xreg=Time)
+LakeLevels.AR2
+
+```
+

@@ -1,0 +1,212 @@
+---
+title: "MATH5845 --- Time Series Analysis: Seasonal ARIMA model for West Virginia Beer Sales"
+author:
+  - Department of Statistics
+  - University of New South Wales
+output:
+  html_document:
+    df_print: paged
+  html_notebook: default
+  pdf_document: default
+---
+  
+  
+# Packages
+```{r, message=FALSE}
+library(astsa)
+#data(package="astsa")
+library(itsmr)
+```
+
+
+
+```{r, message=FALSE}
+
+Data<-read.csv("WEST_VIRGINIA.txt",sep=" ")
+names(Data)<-c("State","Year","Month", "Pop21", "Beer", "Spir", "Wine")
+# CALCULATE CONSUMPTION PER 100,000 people 18 years and over
+BeerHead=10*Data$Beer/Data$Pop21;
+
+BeerHeadts<-ts(BeerHead,start=Data$Year[1],frequency=12)
+
+# Figure 6.2:
+#pdf("WestVaBeerHead.pdf")
+par(mfrow=c(3,1))
+ts.plot(BeerHeadts )
+acf(BeerHeadts )
+pacf(BeerHeadts)
+
+#dev.off()
+```
+
+
+```{r, message=FALSE}
+# Seasonally differenced data:
+BeerHead.d12<-diff(BeerHeadts,lag=12)
+# Figure 6.3:
+#pdf("WestVaBeerHead_d12.pdf")
+par(mfrow=c(3,1))
+ts.plot(BeerHead.d12)
+abline(h=0)
+acf(BeerHead.d12)
+pacf(BeerHead.d12)
+#dev.off()
+```
+
+
+```{r, message=FALSE}
+# Differenced and Seasonally Differenced Data
+BeerHead.d12d1<-diff(diff(BeerHeadts,lag=12))
+# Figure 6.4:
+#pdf("WestVaBeerHead_d12d1.pdf")
+par(mfrow=c(3,1))
+ts.plot(BeerHead.d12d1)
+abline(h=0)
+abline(v=c(1981+7/12,1990+3/12),col=c("red","green"))
+
+acf(BeerHead.d12d1)
+pacf(BeerHead.d12d1)
+#dev.off()
+```
+
+
+```{r, message=FALSE}
+
+library(astsa)
+#pdf("WestVaBeerHead_SARIMA_000_011.pdf")
+sarima000011cons<-sarima(BeerHeadts,0,0,0,0,1,1,12)
+pacf(sarima000011cons$fit$residuals)
+#dev.off()
+
+sarima000011cons    # Model results
+
+shapiro.test(sarima000011cons$fit$residuals)
+
+#pdf("WestVaBeerHead_SARIMA_011_011.pdf")
+
+sarima011011<-sarima(BeerHeadts,0,1,1,0,1,1,12)
+
+sarima011011   # Model results
+
+#dev.off()
+shapiro.test(sarima011011$fit$residuals)
+
+Box.test(sarima011011$fit$residuals,lag=12,fitdf=2,type="Ljung-Box")
+```
+
+
+
+##########################################################################################
+
+## Suggestions for Data Analysis
+
+##########################################################################################
+
+**NOTATION**: I USE the model name part 'sarima' for models fit using the 'sarima' command
+ and 'sarma' for models fit below using the 'arima' command fit to differenced data.
+
+### Fitting seasonal arima models using the built in R functions
+
+Fitting ARIMA models to Seasonally Differenced Data
+using original series, but specifying a seasonal lag difference in model:
+
+```{r}
+BeerHead.d12.sarma.alt<-arima(BeerHeadts,order=c(0,0,0),
+                             seasonal=list(order=c(0,1,1),period=12) ,include.mean=TRUE) 
+BeerHead.d12.sarma.alt    # gives results
+```
+
+#########################################################################################
+**NOTE**: *include.mean=TRUE* is ignored and the following gives same result:
+```{r}
+BeerHead.d12.sarma.alt<-arima(BeerHead.d12,order=c(0,0,0),
+                             seasonal=list(order=c(0,0,1),period=12),include.mean=FALSE )
+```
+
+
+Now using the seasonally differenced data but with mean term included:
+
+```{r}
+BeerHead.d12.sarma.cons<-arima(BeerHead.d12,order=c(0,0,0),
+                               seasonal=list(order=c(0,0,1),period=12),include.mean=TRUE )
+BeerHead.d12.sarma.cons
+```
+
+**compare with 'sarima000011cons' model above.**
+
+But, *sarima000011cons* and *BeerHead.d12.sarima.alt* differ in at least one paremeter.
+Look at the *sarima* function code to explain the difference.
+
+### Fitting ARIMA models to Differenced and Seasonally Differenced Data
+```{r}
+BeerHead.d12d1.sarma<-arima(BeerHeadts,order=c(0,1,1),
+                             seasonal=list(order=c(0,1,1),period=12))
+BeerHead.d12d1.sarma  # model results
+
+```
+
+
+- Compare with *sarima011011* model above - are there any differences?
+
+- Explain why *sarima011011* does not include an estimate of the constant term by 
+ looking carefully at the 'sarima' function code.
+
+### Fit model to differenced and seasonally differenced data including a constant: 
+```{r}
+BeerHead.d12d1.sarma.alt.cons<-arima(BeerHead.d12d1,order=c(0,0,1),
+                                      seasonal=list(order=c(0,0,1),period=12),include.mean=TRUE )
+BeerHead.d12d1.sarma.alt.cons
+```
+
+
+**NOTE**: intercept (contstant) not significant....Can you explain this?
+
+###############################################################################################################
+### Improved Model?
+
+```{r}
+library(astsa)
+
+# My best model
+sarima113011=sarima(BeerHeadts,1,1,3,0,1,1,12)
+sarima113011
+
+# MA(3) needed!
+
+
+# Students attempts 2017:
+
+sarima212011.KL=arima(BeerHeadts,order=c(2,1,2),seasonal=list(order=c(0,1,1),period=12))
+
+sarima212011.KL
+
+
+sarima1711011.AD<-arima(BeerHeadts,order=c(17,1,1),seasonal=list(order=c(0,1,1),period=12),
+                    fixed = c(rep(0,13),rep(NA,1),rep(0,1),rep(NA,4)))
+sarima1711011.AD
+
+sarima1611011.SL<-arima(BeerHeadts,order=c(16,1,1),seasonal=list(order=c(0,1,1),period=12),
+                     fixed = c(rep(0,13),rep(NA,1),rep(0,1),rep(NA,3)))
+sarima1611011.SL
+
+sarima016011.BD=arima(BeerHeadts,order=c(0,1,6), 
+                   seasonal=list(order=c(0,1,1),period=12), fixed = c(NA,0,0,0,0,NA,NA))
+sarima016011.BD
+
+
+# library(fGarch)
+
+# garchBeer=garchFit(sarima113011$residuals~garch(1,1),cond.dist="std")
+# plot(garchBeer)
+
+# ts.plot(BeerHead.d12d1)
+# garchBeerd12d1=garchFit(BeerHead.d12d1~arma(1,0)+garch(1,1),cond.dist="std")
+# 
+# GARCH to differenced and seasonally differenced data directly.
+# library(fGarch)
+# garchBeerd12d1=garchFit(BeerHead.d12d1~garch(1,1),cond.dist="std")
+# acf(garchBeerd12d1@residuals/garchBeerd12d1@sigma.t)
+# Box.test(garchBeerd12d1@residuals/garchBeerd12d1@sigma.t,lag=24)
+
+```
+
