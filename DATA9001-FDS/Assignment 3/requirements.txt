@@ -1,6 +1,6 @@
-imblearn 
-scikit-learn
 numpy
 pandas
 matplotlib
 seaborn
+scikit-learn
+imblearn 
